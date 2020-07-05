@@ -9,5 +9,5 @@ command history to interactive programs.
 This will compile the M_history module and build the example program 
 in the PROGRAMS/ sub-directory.
 ## DOCUMENTATION
-  + [M_history](https://urbanjost.github.io/M_draw/M_history.html) as HTML
+  + [M_history](https://urbanjost.github.io/M_history/M_history.html) as HTML
   + [M_history](md/redo.3.md) as markdown

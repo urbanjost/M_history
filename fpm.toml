@@ -1,8 +1,11 @@
 # TOML file for fpm as described at https://github.com/fortran-lang/fpm/blob/master/manifest-reference.md
 name = "M_history"
 version = "0.1.0"
-license = "license"
+license = "MIT"
 author = "John S. Urban"
 maintainer = "urbanjost@comcast.net"
 copyright = "2020 John S. Urban"
 description = "Input History Editor"
+categories = ["command history"]
+keywords = ["fortran", "input editing"]
+homepage = "https://github.com/urbanjost/M_history.git"

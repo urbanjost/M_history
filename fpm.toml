@@ -9,3 +9,10 @@ description = "Input History Editor"
 categories = ["command history"]
 keywords = ["fortran", "input editing"]
 homepage = "https://github.com/urbanjost/M_history.git"
+
+[[test]]
+name="test_suite_M_history"
+source-dir="test"
+main="test_suite_M_history.f90"
+[test.dependencies]
+M_msg = { git = "https://github.com/urbanjost/M_msg.git" }

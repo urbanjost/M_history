@@ -26,7 +26,8 @@ command history to interactive programs.
 This will compile the M_history module and build the example program 
 in the app/ sub-directory.
 
-## SUPPORTS FPM (registered at the [fpm(1) registry](https://github.com/fortran-lang/fpm-registry) )
+## SUPPORTS FPM ![fpm](docs/images/fpm_logo.gif)
+(registered at the [fpm(1) registry](https://github.com/fortran-lang/fpm-registry) )
 
 Alternatively, download the github repository and build it with 
 fpm ( as described at [Fortran Package Manager](https://github.com/fortran-lang/fpm) )

@@ -3,11 +3,14 @@
 A Fortran subroutine called redo(3f) may be used to give a line-mode
 command history to interactive programs.
 
+There is a stand-alone version in src-alt/ and an fpm-dependent version
+in src/.
+
 ## BUILDING
 
 ```bash
     git clone https://github.com/urbanjost/M_history.git
-    cd M_history/src
+    cd M_history/src-alt
     # change Makefile if not using one of the listed compilers
      
     # for gfortran
@@ -24,7 +27,7 @@ command history to interactive programs.
 ```
 
 This will compile the M_history module and build the example program 
-in the app/ sub-directory.
+in the app/ sub-directory using the source file M_history_standalone.f90.
 
 ## SUPPORTS FPM ![fpm](docs/images/fpm_logo.gif)
 (registered at the [fpm(1) registry](https://github.com/fortran-lang/fpm-registry) )

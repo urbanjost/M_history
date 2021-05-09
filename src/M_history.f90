@@ -199,7 +199,6 @@
 !!    John S. Urban, 1988,2009,2011,2015 (last change: Nov 2019)
 !!##LICENSE
 !!    Public Domain
-!===================================================================================================================================
 module M_history
 !
 !  Acting much like a line-mode editor, the REDO(3f) procedure lets
@@ -207,6 +206,8 @@ module M_history
 !  input. Built-in help and no dependence on terminal control sequences
 !  makes this a simple-to-master and portable input history editor.
 !
+use M_journal, only : journal
+use M_strings, only : change, modif, notabs, s2v, v2s, s2vs
 implicit none
 private
 
@@ -221,13 +222,6 @@ private :: help_                   !  produce help text for redo(3f) usage
 
 integer,parameter :: READLEN=1024  ! width of history file
 
-interface v2s
-   module procedure d2s, r2s, i2s, l2s
-end interface
-
-interface string_to_value
-   module procedure a2d, a2r, a2i
-end interface
 contains
 !==================================================================================================================================!
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
@@ -238,7 +232,7 @@ subroutine redo(inputline,r,lun)
 !       r
 !       r string
 
-character(len=*),parameter::ident_1="@(#)M_history::redo(3f): open binary direct access file for keeping history"
+! ident_1="@(#)M_history::redo(3f): open binary direct access file for keeping history"
 
 character(len=*),intent(inout) :: inputline                ! user string
 character(len=1),intent(in),optional :: r                  ! character to use to trigger editing
@@ -263,7 +257,7 @@ endif
       iredo=0   ! number of lines in redo buffer
       call open_history_(iobuf,' ','scratch',ioparc)        ! redo buffer
       if(ioparc.ne.0)then
-         write(*,*)'sc','error creating history file'
+         call journal('sc','error creating history file')
          return
       endif
    endif
@@ -291,7 +285,7 @@ subroutine open_history_(iunit,fname,sname,ierr)
 implicit none
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-character(len=*),parameter::ident_2="@(#)M_history::open_history_(3fp): open history file for REDO(3f) procedure"
+! ident_2="@(#)M_history::open_history_(3fp): open history file for REDO(3f) procedure"
 
 integer,intent(in)          :: iunit   ! Fortran unit to open
 character(len=*),intent(in) :: fname   ! filename to open
@@ -300,13 +294,14 @@ integer,intent(out)         :: ierr    ! error code returned by opening file
 character(len=1024)         :: msg
 !-----------------------------------------------------------------------------------------------------------------------------------
   if(sname.eq.'scratch')then
-     open(unit=iunit,status='scratch',form='unformatted',access='direct',recl=READLEN,iostat=ierr,iomsg=msg)
+     open(unit=iunit,status='scratch',form='unformatted',access='direct',recl=READLEN,iostat=ierr,iomsg=msg,action='readwrite')
   else
-     open(unit=iunit,file=trim(fname),status=trim(sname),form='unformatted',access='direct',recl=READLEN,iostat=ierr,iomsg=msg)
+     open(unit=iunit,file=trim(fname),status=trim(sname),form='unformatted',access='direct', &
+     & recl=READLEN,iostat=ierr,iomsg=msg,action='readwrite')
   endif
 !-----------------------------------------------------------------------------------------------------------------------------------
   if(ierr.ne.0)then
-     write(*,*)'*open_history_* open error ',ierr,'=',trim(msg)
+     call journal('sc','*open_history_* open error ',ierr,'=',msg)
   endif
 !-----------------------------------------------------------------------------------------------------------------------------------
 end subroutine open_history_
@@ -322,7 +317,7 @@ subroutine redol_(redoline,iobuf,iredo,ibuf0,init,lun)
 !  maybe make .NAME stick into variable $NAME in the calculator
 !  allow changing the edit characters in a modify
 
-character(len=*),parameter::ident_3="@(#)M_history::redoline(3fp): redo a previous input line"
+! ident_3="@(#)M_history::redoline(3fp): redo a previous input line"
 
 character(len=*),intent(out)   :: redoline    ! edited command line to be returned
 integer,intent(in)             :: iobuf       ! history file unit to read old commands from
@@ -418,7 +413,7 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
       endif
 !-----------------------------------------------------------------------------------------------------------------------------------
       cmd=cin(1:1)
-      if(ddd)write(*,*)'d','*redol* cmd=',cmd,'options=',trim(cin)
+      if(ddd)call journal('d','*redol* cmd=',cmd,'options=',cin)
       select case(cmd)                                                   ! first character defines edit action
 !-----------------------------------------------------------------------------------------------------------------------------------
        case(' ')                                                         ! modify the string
@@ -429,7 +424,7 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
          call modif(redoline,cin(2:))
 !-----------------------------------------------------------------------------------------------------------------------------------
        case('c','s')                                                     ! change old string to new
-         call change(redoline,cin(1:255),ier)                            ! xedit-like change command
+         call change(redoline,trim(cin(1:255)),ier)                      ! xedit-like change command
 !     C/STRING1/STRING2/    OR CW/STRING1/STRING2/  (CHANGE IN WINDOW)
 !     WHERE / MAY BE ANY CHARACTER OTHER THAN W OR BLANK, WHICH IS NOT
 !     INCLUDED IN STRING1 OR STRING2
@@ -462,7 +457,7 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
                   iend=len_trim(redoline)
                   redoline=redoline(:iend)//';'//trim(cinbuf)            !! should warn of truncation
                else
-                  write(*,*)'*redol_* line not found in history',ii
+                  call journal('sc','*redol_* line not found in history',ii)
                endif
             enddo
          endif
@@ -470,17 +465,28 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
        case('?','h')                                                     ! display help
          call help_()
 !-----------------------------------------------------------------------------------------------------------------------------------
+       case('D')                                                         ! toggle debug mode
+         if(ddd .eqv. .false.)then
+            ddd=.true.
+            call journal('>')
+         else
+            ddd=.false.
+            call journal('<')
+         endif
+!-----------------------------------------------------------------------------------------------------------------------------------
        case('l','p')                                                     ! display history buffer file with line numbers
          if(cin(2:).eq.' ')then
             istart=iredo+1-20                                            ! default is to back up 20 lines
          else
             istart=int(s2v(cin(2:),ierr,onerr=0))
+            if(ddd)call journal('d','*redol* istart=',istart,'ierr=',ierr)
             if(ierr.ne.0)istart=iredo
             if(istart.lt.0)then
                istart=iredo+1+istart
             endif
          endif
          istart=min(max(1,istart),iredo)                                 ! make istart a safe value
+         if(ddd)call journal('d','*redol* istart=',istart,'iredo=',iredo)
          do i10=istart,iredo
             read(iobuf,rec=i10,iostat=ios)redoline(1:ibuf)
             if(ios.ne.0)then
@@ -503,7 +509,7 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
        case('e','E')                                                     ! dump and edit history file and read it back in
           cmdline=cin(2:)                                                ! assume rest of command is a system command
           if(cmdline=='')cmdline='vim'                                   ! if no system command use "vim"
-          cin='scratch.tmp'                                              ! assume this is a writeable scratch file name
+          cin='scratch.tmp'                                              ! assume this is a writable scratch file name
           cmdline=trim(cmdline)//' '//cin                                ! append scratch filename to system command
           call do_w()                                                    ! dump history file
           call execute_command_line(cmdline,cmdstat=cstat,cmdmsg=msg)    ! Execute the command line specified by the string.
@@ -513,11 +519,11 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
           endif
           open(newunit=iounit,file=cin,iostat=ios)                       ! remove scratch file
           if(ios.ne.0)then
-            write(*,*)'*redol_* error opening scratch file file',trim(cin),ios,'=',trim(msg)
+            call journal('sc','*redol_* error opening scratch file file',cin,ios,'=',msg)
           endif
           close(unit=iounit,status='delete',iostat=ios,iomsg=msg)
           if(ios.ne.0)then
-            write(*,*)'*redol_* error removing scratch file ',trim(cin),ios,'=',trim(msg)
+            call journal('sc','*redol_* error removing scratch file file',cin,ios,'=',msg)
           endif
 !-----------------------------------------------------------------------------------------------------------------------------------
        case('a')                                                         ! append to history from a file
@@ -603,24 +609,24 @@ subroutine do_w()
 WRITE: block
    open(newunit=idump,file=cin,iostat=ios,status='UNKNOWN',iomsg=msg)
    if(ios.ne.0)then
-      write(*,*)'*redol_* error opening dump file',ios,'=',trim(msg)
+      call journal('sc','*redol_* error opening dump file',ios,'=',msg)
       exit WRITE
    endif
    do i15=1,iredo
       read(iobuf,rec=i15,iostat=ios,iomsg=msg)redoline(1:ibuf)
       if(ios.ne.0)then
-         write(*,*)'*redol_* error reading history file',ios,'=',trim(msg)
+         call journal('sc','*redol_* error reading history file',ios,'=',msg)
          exit WRITE
       endif
       ix=max(1,len_trim(redoline))
       write(idump,'(a)',iostat=ios,iomsg=msg)redoline(:ix)
       if(ios.ne.0)then
-         write(*,*)'*redol_* error writing dump file',ios,'=',trim(msg)
+         call journal('sc','*redol_* error writing dump file',ios,'=',msg)
          close(idump,iostat=ios)
          exit WRITE
       endif
    enddo
-   write(*,*)'wrote file',trim(cin)
+   call journal('sc','wrote file ',cin)
 endblock WRITE
 close(idump,iostat=ios)
 end subroutine do_w
@@ -629,26 +635,26 @@ subroutine do_ar()
 REPLACE: block
    open(newunit=idump,file=cin,iostat=ios,status='OLD',iomsg=msg)
    if(ios.ne.0)then
-      write(*,*)'*redol_* error opening file',ios,'=',trim(msg)
+      call journal('sc','*redol_* error opening file',ios,'=',msg)
       exit REPLACE
    endif
    do
       read(idump,'(a)',iostat=ios,iomsg=msg)redoline(1:ibuf)
       if(ios.ne.0)then
          if(.not.is_iostat_end(ios))then
-            write(*,*)'*redol_* error reading file ',cin,ios,'=',trim(msg)
+            call journal('sc','*redol_* error reading file ',cin,ios,'=',msg)
          endif
          exit REPLACE
       endif
       iredo=iredo+1
       write(iobuf,rec=iredo,iostat=ios,iomsg=msg)redoline(1:ibuf)
       if(ios.ne.0)then
-         write(*,*)'*redol_* error writing history file',ios,'=',trim(msg)
+         call journal('sc','*redol_* error writing history file',ios,'=',msg)
          exit REPLACE
       endif
    enddo
 endblock REPLACE
-write(*,*)'read file',trim(cin)
+call journal('sc','read file ',cin)
 close(idump,iostat=ios)
 end subroutine do_ar
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -658,7 +664,7 @@ end subroutine redol_
 !===================================================================================================================================
 subroutine help_()
 
-character(len=*),parameter::ident_4="@(#)M_history::help_(3fp): prints help for REDO(3f)"
+! ident_4="@(#)M_history::help_(3fp): prints help for REDO(3f)"
 
 character(len=80),allocatable :: usage(:)
 integer                       :: i
@@ -691,1014 +697,9 @@ usage=[ &
 !-----------------------------------------------------------------------------------------------------------------------------------
    !WRITE(*,'(a)'),usage(i),i=1,size(usage))
    do i=1,size(usage)
-      write(*,*)usage(i)
+      call journal('sc',usage(i))
    enddo
 end subroutine help_
-!===================================================================================================================================
-!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()=
-!===================================================================================================================================
-! COPIES OF OTHER MODULE ROUTINES
-!===================================================================================================================================
-subroutine change(target_string,cmd,ierr)
-! Change a string assumed long enough to accommodate the change, with a directive that resembles a line editor directive of the form
-!    C/old_string/new_string/
-! where / may be any character which is not included in old_string or new_string.
-! a null old_string implies "beginning of string"
-!===================================================================================================================================
-
-character(len=*),parameter::ident_12="@(#)M_strings::change(3f): change a character string like a line editor"
-
-character(len=*),intent(inout)   :: target_string          ! line to be changed
-character(len=*),intent(in)      :: cmd                    ! contains the instructions changing the string
-character(len=1)                 :: delimiters
-integer                          :: ierr                   ! error code. ier=-1 bad directive;=0 no changes made;>0 ier changes made
-integer                          :: itoken
-integer,parameter                :: id=2                   ! expected location of delimiter
-character(len=:),allocatable     :: old,new                ! scratch string buffers
-logical                          :: ifok
-integer                          :: lmax                   ! length of target string
-integer                          :: start_token,end_token
-!-----------------------------------------------------------------------------------------------------------------------------------
-   lmax=len_trim(cmd)                                                          ! significant length of change directive
-   if(lmax.ge.4)then                         ! strtok ignores blank tokens so look for special case where first token is really null
-      delimiters=cmd(id:id)                                                    ! find delimiter in expected location
-      itoken=0                                                                 ! initialize strtok(3f) procedure
-
-      if(strtok(cmd(id:),itoken,start_token,end_token,delimiters)) then        ! find OLD string
-         old=cmd(start_token+id-1:end_token+id-1)
-      else
-         old=''
-      endif
-
-      if(cmd(id:id).eq.cmd(id+1:id+1))then
-         new=old
-         old=''
-      else                                                                     ! normal case
-         ifok=strtok(cmd(id:),itoken,start_token,end_token,delimiters)         ! find NEW string
-         if(end_token .eq. (len(cmd)-id+1) )end_token=len_trim(cmd(id:))       ! if missing ending delimiter
-         new=cmd(start_token+id-1:min(end_token+id-1,lmax))
-      endif
-
-      call substitute(target_string,old,new,ierr,1,len_trim(target_string))    ! change old substrings to new substrings
-   else                                                                        ! command was two or less characters
-      ierr=-1
-      write(*,*)'*change* incorrect change directive -too short'
-   endif
-!-----------------------------------------------------------------------------------------------------------------------------------
-end subroutine change
-!===================================================================================================================================
-SUBROUTINE MODIF(CLINE,MOD)
-
-!$@(#) M_strings::modif(3f): Emulate the MODIFY command from the line editor XEDIT
-
-!
-! MODIF
-! =====
-! ACTION- MODIFIES THE LINE CURRENTLY POINTED AT. THE INPUT STRING CLINE IS ASSUMED TO BE LONG ENOUGH TO ACCOMMODATE THE CHANGES
-!         THE MODIFY DIRECTIVES ARE AS FOLLOWS-
-!
-!   DIRECTIVE                       EXPLANATION
-!   ---------                       ------------
-!   ^STRING#   CAUSES THE STRING OF CHARACTERS BETWEEN THE ^ AND THE
-!              NEXT  # TO BE INSERTED BEFORE THE CHARACTERS POINTED TO
-!              BY THE ^.  AN ^ OR & WITHIN THE STRING IS TREATED AS A
-!              REGULAR CHARACTER.  IF THE CLOSING # IS NOT SPECIFIED,
-!              MODIF(3f) INSERTS THE REMAINDER OFTHELINE AS IF A # WAS
-!              SPECIFIED AFTER THE LAST NONBLANK CHARACTER.
-!
-!              THERE ARE TWO EXCEPTIONS. THE COMBINATION ^# CAUSES A #
-!              TO BE INSERTED BEFORE THE CHARACTER POINTED TO BY THE
-!              ^,  AND AN ^ AS THE LAST CHARACTER OF THE DIRECTIVES
-!              CAUSES A BLANK TO BE INSERTED.
-!
-!   #          (WHEN NOT THE FIRST # AFTER AN ^) CAUSES THE CHARACTER
-!              ABOVE IT TO BE DELETED.
-!
-!   &          REPLACES THE CHARACTER ABOVE IT WITH A SPACE.
-!
-!   (SPACE)    A SPACE BELOW A CHARACTER LEAVES IT UNCHANGED.
-!
-!   ANY OTHER CHARACTER REPLACES THE CHARACTER ABOVE IT.
-!
-! EXAMPLE-
-! THE INPUT LINE........ 10 THIS STRING  TO BE MORTIFD
-! THE DIRECTIVES LINE...        ^ IS THE#        D#  ^IE
-! ALTERED INPUT LINE.... 10 THIS IS THE STRING  TO BE MODIFIED
-!CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-character(len=*)            :: cline        !STRING TO BE MODIFIED
-character(len=*),intent(in) :: mod          !STRING TO DIRECT MODIFICATION
-character(len=len(cline))   :: cmod
-character(len=3),parameter  :: c='#&^'      !ASSIGN DEFAULT EDIT CHARACTERS
-integer                     :: maxscra      !LENGTH OF SCRATCH BUFFER
-character(len=len(cline))   :: dum2         !SCRATCH CHARACTER BUFFER
-logical                     :: linsrt       !FLAG FOR INSERTING DATA ON LINE
-integer :: i, j, ic, ichar, iend, lmax, lmx1
-maxscra=len(cline)
-   CMOD=TRIM(MOD)
-   LMAX=MIN0(LEN(CLINE),MAXSCRA)         !DETERMINE MAXIMUM LINE LENGTH
-   LMX1=LMAX-1                           !MAX LINE LENGTH -1
-   DUM2=' '                              !INITIALIZE NEW LINE
-   LINSRT=.FALSE.                        !INITIALIZE INSERT MODE
-   IEND=len_trim(CMOD)                   !DETERMINE END OF MODS
-   I=0                                   !CHAR COUNTER FOR MOD LINE CMOD
-   IC=0                                  !CHAR COUNTER FOR CURRENT LINE CLINE
-   ICHAR=0                               !CHAR COUNTER NEW LINE DUM2
-11 CONTINUE
-   I=I+1                                 !NEXT CHAR IN MOD LINE
-   IF(ICHAR.GT.LMX1)GOTO 999             !IF TOO MANY CHARS IN NEW LINE
-   IF(LINSRT) THEN                       !IF INSERTING NEW CHARS
-      IF(I.GT.IEND) CMOD(I:I)=C(1:1)     !FORCE END OF INSERT MODE
-      IF(CMOD(I:I).EQ.C(1:1))THEN        !IF END OF INSERT MODE
-         LINSRT=.FALSE.                  !RESET INSERT MODE FLAG
-         IF(IC+1.EQ.I)THEN               !NULL INSERT STRING
-            ICHAR=ICHAR+1                !INCREMENT COUNTER FOR NEW LINE
-            DUM2(ICHAR:ICHAR)=C(1:1)     !INSERT INSERT MODE TERMINATOR
-         ENDIF
-         DO J=IC,I                       !LOOP OF NUMBER OF CHARS INSERTED
-            ICHAR=ICHAR+1                !INCREMENT COUNTER FOR NEW LINE
-            IF(ICHAR.GT.LMAX)GOTO 999    !IF AT BUFFER LIMIT, QUIT
-            DUM2(ICHAR:ICHAR)=CLINE(J:J) !APPEND CHARS FROM ORIG LINE
-         ENDDO                           !...WHICH ALIGN WITH INSERTED CHARS
-         IC=I                            !RESET CHAR COUNT TO END OF INSERT
-         GOTO 1                          !CHECK NEW LINE LENGTH AND CYCLE
-      ENDIF                              !END OF TERMINATED INSERT LOGIC
-      ICHAR=ICHAR+1                      !INCREMENT NEW LINE COUNT
-      DUM2(ICHAR:ICHAR)=CMOD(I:I)        !SET NEWLINE CHAR TO INSERTED CHAR
-   ELSE                                  !IF NOT INSERTING CHARACTERS
-      IC=IC+1                            !INCREMENT ORIGINAL LINE COUNTER
-      IF(CMOD(I:I).EQ.C(1:1))GOTO 1      !IF DELETE CHAR. NO COPY AND CYCLE
-      IF(CMOD(I:I).EQ.C(3:3))THEN        !IF BEGIN INSERT MODE
-         LINSRT=.TRUE.                   !SET INSERT FLAG TRUE
-         GOTO 1                          !CHECK LINE LENGTH AND CONTINUE
-      ENDIF                              !IF NOT BEGINNING INSERT MODE
-      ICHAR=ICHAR+1                      !INCREMENT NEW LINE COUNTER
-      IF(CMOD(I:I).EQ.C(2:2))THEN        !IF REPLACE WITH BLANK
-         DUM2(ICHAR:ICHAR)=' '           !SET NEWLINE CHAR TO BLANK
-         GOTO 1                          !CHECK LINE LENGTH AND CYCLE
-      ENDIF                              !IF NOT REPLACE WITH BLANK
-      IF(CMOD(I:I).EQ.' ')THEN           !IF BLANK, KEEP ORIGINAL CHARACTER
-         DUM2(ICHAR:ICHAR)=CLINE(IC:IC)  !SET NEW CHAR TO ORIGINAL CHAR
-      ELSE                               !IF NOT KEEPING OLD CHAR
-         DUM2(ICHAR:ICHAR)=CMOD(I:I)     !REPLACE ORIGINAL CHAR WITH NEW
-      ENDIF                              !END CHAR KEEP OR REPLACE
-   ENDIF                                 !END INSERT OR NO-INSERT
-1  CONTINUE
-   IF(I.LT.LMAX)GOTO 11                  !CHECK FOR END OF LINE REACHED
-                                         !AND CYCLE IF OK
-999   CONTINUE
-   CLINE=DUM2                            !SET ORIGINAL CHARS TO NEW CHARS
-END SUBROUTINE MODIF                     !RETURN
-!===================================================================================================================================
-subroutine notabs(INSTR,OUTSTR,ILEN)
-
-character(len=*),parameter::ident_31="&
-&@(#)M_strings::notabs(3f): convert tabs to spaces while maintaining columns, remove CRLF chars"
-
-CHARACTER(LEN=*),INTENT(IN)   :: instr        ! input line to scan for tab characters
-CHARACTER(LEN=*),INTENT(OUT)  :: outstr       ! tab-expanded version of INSTR produced
-INTEGER,INTENT(OUT)           :: ilen         ! column position of last character put into output string
-                                              ! that is, ILEN holds the position of the last non-blank character in OUTSTR
-!===================================================================================================================================
-INTEGER,PARAMETER             :: tabsize=8    ! assume a tab stop is set every 8th column
-INTEGER                       :: ipos         ! position in OUTSTR to put next character of INSTR
-INTEGER                       :: lenin        ! length of input string trimmed of trailing spaces
-INTEGER                       :: lenout       ! number of characters output string can hold
-INTEGER                       :: istep        ! counter that advances thru input string INSTR one character at a time
-CHARACTER(LEN=1)              :: c            ! character in input line being processed
-INTEGER                       :: iade         ! ADE (ASCII Decimal Equivalent) of character being tested
-!===================================================================================================================================
-   IPOS=1                                     ! where to put next character in output string OUTSTR
-   lenin=LEN(instr)                           ! length of character variable INSTR
-   lenin=LEN_TRIM(instr(1:lenin))             ! length of INSTR trimmed of trailing spaces
-   lenout=LEN(outstr)                         ! number of characters output string OUTSTR can hold
-   OUTSTR=" "                                 ! this SHOULD blank-fill string, a buggy machine required a loop to set all characters
-!===================================================================================================================================
-      SCAN_LINE: DO istep=1,lenin             ! look through input string one character at a time
-         c=instr(istep:istep)                 ! get next character
-         iade=ICHAR(c)                        ! get ADE of the character
-         expand_tabs : SELECT CASE (iade)     ! take different actions depending on which character was found
-         CASE(9)                              ! test if character is a tab and move pointer out to appropriate column
-            ipos = ipos + (tabsize - (MOD(ipos-1,tabsize)))
-         CASE(10,13)                          ! convert carriage-return and new-line to space ,typically to handle DOS-format files
-            ipos=ipos+1
-         CASE DEFAULT                         ! c is anything else other than a tab,newline,or return  insert it in output string
-            IF(ipos > lenout)THEN
-               write(*,*)"*notabs* output string overflow"
-               EXIT
-            ELSE
-               outstr(ipos:ipos)=c
-               ipos=ipos+1
-            ENDIF
-         END SELECT expand_tabs
-      enddo SCAN_LINE
-!===================================================================================================================================
-      ipos=MIN(ipos,lenout)                   ! tabs or newline or return characters or last character might have gone too far
-      ilen=LEN_TRIM(outstr(:ipos))            ! trim trailing spaces
-!===================================================================================================================================
-END SUBROUTINE notabs
-!===================================================================================================================================
-doubleprecision function s2v(chars,ierr,onerr)
-!  1989 John S. Urban
-
-character(len=*),parameter::ident_43="@(#)M_strings::s2v(3f): returns doubleprecision number from string"
-
-
-character(len=*),intent(in)  :: chars
-integer,optional             :: ierr
-doubleprecision              :: valu
-integer                      :: ierr_local
-class(*),intent(in),optional :: onerr
-
-   ierr_local=0
-   if(present(onerr))then
-      call a2d(chars,valu,ierr_local,onerr)
-   else
-      call a2d(chars,valu,ierr_local)
-   endif
-   if(present(ierr))then ! if error is not returned stop program on error
-      ierr=ierr_local
-      s2v=valu
-   elseif(ierr_local.ne.0)then
-      write(*,*)'*s2v* stopped while reading '//trim(chars)
-      stop 1
-   else
-      s2v=valu
-   endif
-end function s2v
-!----------------------------------------------------------------------------------------------------------------------------------
-subroutine substitute(targetline,old,new,ierr,start,end)
-
-character(len=*),parameter::ident_11="@(#)M_strings::substitute(3f): Globally substitute one substring for another in string"
-
-!-----------------------------------------------------------------------------------------------------------------------------------
-character(len=*)               :: targetline         ! input line to be changed
-character(len=*),intent(in)    :: old                ! old substring to replace
-character(len=*),intent(in)    :: new                ! new substring
-integer,intent(out),optional   :: ierr               ! error code. if ierr = -1 bad directive, >=0 then ierr changes made
-integer,intent(in),optional    :: start              ! start sets the left margin
-integer,intent(in),optional    :: end                ! end sets the right margin
-!-----------------------------------------------------------------------------------------------------------------------------------
-character(len=len(targetline)) :: dum1               ! scratch string buffers
-integer                        :: ml, mr, ier1
-integer                        :: maxlengthout       ! MAXIMUM LENGTH ALLOWED FOR NEW STRING
-integer                        :: original_input_length
-integer                        :: len_old, len_new
-integer                        :: ladd
-integer                        :: ir
-integer                        :: ind
-integer                        :: il
-integer                        :: id
-integer                        :: ic
-integer                        :: ichar
-!-----------------------------------------------------------------------------------------------------------------------------------
-   if (present(start)) then                            ! optional starting column
-      ml=start
-   else
-      ml=1
-   endif
-   if (present(end)) then                              ! optional ending column
-      mr=end
-   else
-      mr=len(targetline)
-   endif
-!-----------------------------------------------------------------------------------------------------------------------------------
-   ier1=0                                              ! initialize error flag/change count
-   maxlengthout=len(targetline)                        ! max length of output string
-   original_input_length=len_trim(targetline)          ! get non-blank length of input line
-   dum1(:)=' '                                         ! initialize string to build output in
-   id=mr-ml                                            ! check for window option !! change to optional parameter(s)
-!-----------------------------------------------------------------------------------------------------------------------------------
-   len_old=len(old)                                    ! length of old substring to be replaced
-   len_new=len(new)                                    ! length of new substring to replace old substring
-   if(id.le.0)then                                     ! no window so change entire input string
-      il=1                                             ! il is left margin of window to change
-      ir=maxlengthout                                  ! ir is right margin of window to change
-      dum1(:)=' '                                      ! begin with a blank line
-   else                                                ! if window is set
-      il=ml                                            ! use left margin
-      ir=min0(mr,maxlengthout)                         ! use right margin or rightmost
-      dum1=targetline(:il-1)                           ! begin with what's below margin
-   endif                                               ! end of window settings
-!-----------------------------------------------------------------------------------------------------------------------------------
-   if(len_old.eq.0)then                                ! c//new/ means insert new at beginning of line (or left margin)
-      ichar=len_new + original_input_length
-      if(ichar.gt.maxlengthout)then
-         write(*,*)'*substitute* new line will be too long'
-         ier1=-1
-         if (present(ierr))ierr=ier1
-         return
-      endif
-      if(len_new.gt.0)then
-         dum1(il:)=new(:len_new)//targetline(il:original_input_length)
-      else
-         dum1(il:)=targetline(il:original_input_length)
-      endif
-      targetline(1:maxlengthout)=dum1(:maxlengthout)
-      ier1=1                                           ! made one change. actually, c/// should maybe return 0
-      if(present(ierr))ierr=ier1
-      return
-   endif
-!-----------------------------------------------------------------------------------------------------------------------------------
-   ichar=il                                            ! place to put characters into output string
-   ic=il                                               ! place looking at in input string
-   loop: do
-      ind=index(targetline(ic:),old(:len_old))+ic-1    ! try to find start of old string in remaining part of input in change window
-      if(ind.eq.ic-1.or.ind.gt.ir)then                 ! did not find old string or found old string past edit window
-         exit loop                                     ! no more changes left to make
-      endif
-      ier1=ier1+1                                      ! found an old string to change, so increment count of changes
-      if(ind.gt.ic)then                                ! if found old string past at current position in input string copy unchanged
-         ladd=ind-ic                                   ! find length of character range to copy as-is from input to output
-         if(ichar-1+ladd.gt.maxlengthout)then
-            ier1=-1
-            exit loop
-         endif
-         dum1(ichar:)=targetline(ic:ind-1)
-         ichar=ichar+ladd
-      endif
-      if(ichar-1+len_new.gt.maxlengthout)then
-         ier1=-2
-         exit loop
-      endif
-      if(len_new.ne.0)then
-         dum1(ichar:)=new(:len_new)
-         ichar=ichar+len_new
-      endif
-      ic=ind+len_old
-   enddo loop
-!-----------------------------------------------------------------------------------------------------------------------------------
-   select case (ier1)
-   case (:-1)
-      write(*,*)'*substitute* new line will be too long'
-   case (0)                                                ! there were no changes made to the window
-   case default
-      ladd=original_input_length-ic
-      if(ichar+ladd.gt.maxlengthout)then
-         write(*,*)'*substitute* new line will be too long'
-         ier1=-1
-         if(present(ierr))ierr=ier1
-         return
-      endif
-      if(ic.lt.len(targetline))then
-         dum1(ichar:)=targetline(ic:max(ic,original_input_length))
-      endif
-      targetline=dum1(:maxlengthout)
-   end select
-   if(present(ierr))ierr=ier1
-!-----------------------------------------------------------------------------------------------------------------------------------
-end subroutine substitute
-!===================================================================================================================================
-!===================================================================================================================================
-function d2s(dvalue,fmt) result(outstr)
-
-character(len=*),parameter::ident_45="@(#)M_strings::d2s(3fp): private function returns string given doubleprecision value"
-
-doubleprecision,intent(in)   :: dvalue                         ! input value to convert to a string
-character(len=*),intent(in),optional :: fmt
-character(len=:),allocatable :: outstr                         ! output string to generate
-character(len=80)            :: string
-   if(present(fmt))then
-      call value_to_string(dvalue,string,fmt=fmt)
-   else
-      call value_to_string(dvalue,string)
-   endif
-   outstr=trim(string)
-end function d2s
-!===================================================================================================================================
-function r2s(rvalue,fmt) result(outstr)
-
-character(len=*),parameter::ident_46="@(#)M_strings::r2s(3fp): private function returns string given real value"
-
-real,intent(in)              :: rvalue                         ! input value to convert to a string
-character(len=*),intent(in),optional :: fmt
-character(len=:),allocatable :: outstr                         ! output string to generate
-character(len=80)            :: string
-   if(present(fmt))then
-      call value_to_string(rvalue,string,fmt=fmt)
-   else
-      call value_to_string(rvalue,string)
-   endif
-   outstr=trim(string)
-end function r2s
-!===================================================================================================================================
-function i2s(ivalue,fmt) result(outstr)
-
-character(len=*),parameter::ident_47="@(#)M_strings::i2s(3fp): private function returns string given integer value"
-
-integer,intent(in)           :: ivalue                         ! input value to convert to a string
-character(len=*),intent(in),optional :: fmt
-character(len=:),allocatable :: outstr                         ! output string to generate
-character(len=80)            :: string
-   if(present(fmt))then
-      call value_to_string(ivalue,string,fmt=fmt)
-   else
-      call value_to_string(ivalue,string)
-   endif
-   outstr=trim(string)
-end function i2s
-!===================================================================================================================================
-function l2s(lvalue,fmt) result(outstr)
-
-character(len=*),parameter::ident_48="@(#)M_strings::l2s(3fp): private function returns string given logical value"
-
-logical,intent(in)           :: lvalue                         ! input value to convert to a string
-character(len=*),intent(in),optional :: fmt
-character(len=:),allocatable :: outstr                         ! output string to generate
-character(len=80)             :: string
-   if(present(fmt))then
-      call value_to_string(lvalue,string,fmt=fmt)
-   else
-      call value_to_string(lvalue,string)
-   endif
-   outstr=trim(string)
-end function l2s
-!===================================================================================================================================
-FUNCTION strtok(source_string,itoken,token_start,token_end,delimiters) result(strtok_status)
-! JSU- 20151030
-
-character(len=*),parameter::ident_13="@(#)M_strings::strtok(3f): Tokenize a string"
-
-character(len=*),intent(in)  :: source_string    ! Source string to tokenize.
-character(len=*),intent(in)  :: delimiters       ! list of separator characters. May change between calls
-integer,intent(inout)        :: itoken           ! token count since started
-logical                      :: strtok_status    ! returned value
-integer,intent(out)          :: token_start      ! beginning of token found if function result is .true.
-integer,intent(inout)        :: token_end        ! end of token found if function result is .true.
-integer,save                 :: isource_len
-!----------------------------------------------------------------------------------------------------------------------------
-!  calculate where token_start should start for this pass
-   if(itoken.le.0)then                           ! this is assumed to be the first call
-      token_start=1
-   else                                          ! increment start to previous end + 1
-      token_start=token_end+1
-   endif
-!----------------------------------------------------------------------------------------------------------------------------
-   isource_len=len(source_string)                ! length of input string
-!----------------------------------------------------------------------------------------------------------------------------
-   if(token_start.gt.isource_len)then            ! user input error or at end of string
-      token_end=isource_len                      ! assume end of token is end of string until proven otherwise so it is set
-      strtok_status=.false.
-      return
-   endif
-!----------------------------------------------------------------------------------------------------------------------------
-   ! find beginning of token
-   do while (token_start .le. isource_len)       ! step thru each character to find next delimiter, if any
-      if(index(delimiters,source_string(token_start:token_start)) .ne. 0) then
-         token_start = token_start + 1
-      else
-         exit
-      endif
-   enddo
-!----------------------------------------------------------------------------------------------------------------------------
-   token_end=token_start
-   do while (token_end .le. isource_len-1)       ! step thru each character to find next delimiter, if any
-      if(index(delimiters,source_string(token_end+1:token_end+1)) .ne. 0) then  ! found a delimiter in next character
-         exit
-      endif
-      token_end = token_end + 1
-   enddo
-!----------------------------------------------------------------------------------------------------------------------------
-   if (token_start .gt. isource_len) then        ! determine if finished
-      strtok_status=.false.                      ! flag that input string has been completely processed
-   else
-      itoken=itoken+1                            ! increment count of tokens found
-      strtok_status=.true.                       ! flag more tokens may remain
-   endif
-!----------------------------------------------------------------------------------------------------------------------------
-end function strtok
-!===================================================================================================================================
-logical function decodebase(string,basein,out_baseten)
-implicit none
-
-character(len=*),parameter::ident_72="@(#)M_strings::decodebase(3f): convert whole number string in base [2-36] to base 10 number"
-
-character(len=*),intent(in)  :: string
-integer,intent(in)           :: basein
-integer,intent(out)          :: out_baseten
-
-character(len=len(string))   :: string_local
-integer           :: long, i, j, k
-real              :: y
-real              :: mult
-character(len=1)  :: ch
-real,parameter    :: XMAXREAL=real(huge(1))
-integer           :: out_sign
-integer           :: basein_local
-integer           :: ipound
-integer           :: ierr
-
-  string_local=upper(trim(adjustl(string)))
-  decodebase=.false.
-
-  ipound=index(string_local,'#')                                       ! determine if in form [-]base#whole
-  if(basein.eq.0.and.ipound.gt.1)then                                  ! split string into two values
-     call string_to_value(string_local(:ipound-1),basein_local,ierr)   ! get the decimal value of the base
-     string_local=string_local(ipound+1:)                              ! now that base is known make string just the value
-     if(basein_local.ge.0)then                                         ! allow for a negative sign prefix
-        out_sign=1
-     else
-        out_sign=-1
-     endif
-     basein_local=abs(basein_local)
-  else                                                                 ! assume string is a simple positive value
-     basein_local=abs(basein)
-     out_sign=1
-  endif
-
-  out_baseten=0
-  y=0.0
-  ALL: if(basein_local<2.or.basein_local>36) then
-    print *,'(*decodebase* ERROR: Base must be between 2 and 36. base=',basein_local
-  else ALL
-     out_baseten=0;y=0.0; mult=1.0
-     long=LEN_TRIM(string_local)
-     do i=1, long
-        k=long+1-i
-        ch=string_local(k:k)
-        if(ch.eq.'-'.and.k.eq.1)then
-           out_sign=-1
-           cycle
-        endif
-        if(ch<'0'.or.ch>'Z'.or.(ch>'9'.and.ch<'A'))then
-           write(*,*)'*decodebase* ERROR: invalid character ',ch
-           exit ALL
-        endif
-        if(ch<='9') then
-              j=IACHAR(ch)-IACHAR('0')
-        else
-              j=IACHAR(ch)-IACHAR('A')+10
-        endif
-        if(j>=basein_local)then
-           exit ALL
-        endif
-        y=y+mult*j
-        if(mult>XMAXREAL/basein_local)then
-           exit ALL
-        endif
-        mult=mult*basein_local
-     enddo
-     decodebase=.true.
-     out_baseten=nint(out_sign*y)*sign(1,basein)
-  endif ALL
-end function decodebase
-!===================================================================================================================================
-subroutine value_to_string(gval,chars,length,err,fmt,trimz)
-
-character(len=*),parameter::ident_40="@(#)M_strings::value_to_string(3fp): subroutine returns a string from a value"
-
-class(*),intent(in)                      :: gval
-character(len=*),intent(out)             :: chars
-integer,intent(out),optional             :: length
-integer,optional                         :: err
-integer                                  :: err_local
-character(len=*),optional,intent(in)     :: fmt         ! format to write value with
-logical,intent(in),optional              :: trimz
-character(len=:),allocatable             :: fmt_local
-character(len=1024)                      :: msg
-
-!  Notice that the value GVAL can be any of several types ( INTEGER,REAL,DOUBLEPRECISION,LOGICAL)
-
-   if (present(fmt)) then
-      select type(gval)
-      type is (integer)
-         fmt_local='(i0)'
-         if(fmt.ne.'') fmt_local=fmt
-         write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
-      type is (real)
-         fmt_local='(bz,g23.10e3)'
-         fmt_local='(bz,g0.8)'
-         if(fmt.ne.'') fmt_local=fmt
-         write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
-      type is (doubleprecision)
-         fmt_local='(bz,g0)'
-         if(fmt.ne.'') fmt_local=fmt
-         write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
-      type is (logical)
-         fmt_local='(l1)'
-         if(fmt.ne.'') fmt_local=fmt
-         write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
-      class default
-         write(*,*)'*value_to_string* UNKNOWN TYPE'
-         chars=' '
-      end select
-      if(fmt.eq.'') then
-         chars=adjustl(chars)
-         call trimzeros(chars)
-      endif
-   else                                                  ! no explicit format option present
-      err_local=-1
-      select type(gval)
-      type is (integer)
-         write(chars,*,iostat=err_local,iomsg=msg)gval
-      type is (real)
-         write(chars,*,iostat=err_local,iomsg=msg)gval
-      type is (doubleprecision)
-         write(chars,*,iostat=err_local,iomsg=msg)gval
-      type is (logical)
-         write(chars,*,iostat=err_local,iomsg=msg)gval
-      class default
-         chars=''
-      end select
-      chars=adjustl(chars)
-      if(index(chars,'.').ne.0) call trimzeros(chars)
-   endif
-   if(present(trimz))then
-      if(trimz)then
-         chars=adjustl(chars)
-         call trimzeros(chars)
-      endif
-   endif
-
-   if(present(length)) then
-      length=len_trim(chars)
-   endif
-
-   if(present(err)) then
-      err=err_local
-   elseif(err_local.ne.0)then
-      !! cannot currently do I/O from a function being called from I/O
-      !!write(ERROR_UNIT,'(a)')'*value_to_string* WARNING:['//trim(msg)//']'
-      chars=chars//' *value_to_string* WARNING:['//trim(msg)//']'
-   endif
-
-end subroutine value_to_string
-!===================================================================================================================================
-elemental pure function upper(str,begin,end) result (string)
-
-character(len=*),parameter::ident_21="@(#)M_strings::upper(3f): Changes a string to uppercase"
-
-character(*), intent(In)      :: str                 ! inpout string to convert to all uppercase
-integer, intent(in), optional :: begin,end
-character(len(str))           :: string              ! output string that contains no miniscule letters
-integer                       :: i                   ! loop counter
-integer                       :: ibegin,iend
-   string = str                                      ! initialize output string to input string
-
-   ibegin = 1
-   if (present(begin))then
-      ibegin = max(ibegin,begin)
-   endif
-
-   iend = len_trim(str)
-   if (present(end))then
-      iend= min(iend,end)
-   endif
-
-   do i = ibegin, iend                               ! step thru each letter in the string in specified range
-       select case (str(i:i))
-       case ('a':'z')                                ! located miniscule letter
-          string(i:i) = char(iachar(str(i:i))-32)    ! change miniscule letter to uppercase
-       end select
-   end do
-
-end function upper
-!===================================================================================================================================
-function s2vs(string,delim) result(darray)
-
-character(len=*),parameter::ident_55="@(#)M_strings::s2vs(3f): function returns array of values from a string"
-
-character(len=*),intent(in)        :: string                       ! keyword to retrieve value for from dictionary
-character(len=*),optional          :: delim                        ! delimiter characters
-character(len=:),allocatable       :: delim_local
-doubleprecision,allocatable        :: darray(:)                    ! function type
-
-character(len=:),allocatable       :: carray(:)                    ! convert value to an array using split(3f)
-integer                            :: i
-integer                            :: ier
-!-----------------------------------------------------------------------------------------------------------------------------------
-   if(present(delim))then
-      delim_local=delim
-   else
-      delim_local=' ;,'
-   endif
-!-----------------------------------------------------------------------------------------------------------------------------------
-   call split(string,carray,delimiters=delim_local)         ! split string into an array
-   allocate(darray(size(carray)))                           ! create the output array
-   do i=1,size(carray)
-      call string_to_value(carray(i), darray(i), ier)       ! convert the string to a numeric value
-   enddo
-!-----------------------------------------------------------------------------------------------------------------------------------
-end function s2vs
-!===================================================================================================================================
-subroutine split(input_line,array,delimiters,order,nulls)
-!-----------------------------------------------------------------------------------------------------------------------------------
-
-character(len=*),parameter::ident_7="&
-&@(#)M_strings::split(3f): parse string on delimiter characters and store tokens into an allocatable array"
-
-!  John S. Urban
-!-----------------------------------------------------------------------------------------------------------------------------------
-intrinsic index, min, present, len
-!-----------------------------------------------------------------------------------------------------------------------------------
-!  given a line of structure " par1 par2 par3 ... parn " store each par(n) into a separate variable in array.
-!    o by default adjacent delimiters in the input string do not create an empty string in the output array
-!    o no quoting of delimiters is supported
-character(len=*),intent(in)              :: input_line  ! input string to tokenize
-character(len=*),optional,intent(in)     :: delimiters  ! list of delimiter characters
-character(len=*),optional,intent(in)     :: order       ! order of output array sequential|[reverse|right]
-character(len=*),optional,intent(in)     :: nulls       ! return strings composed of delimiters or not ignore|return|ignoreend
-character(len=:),allocatable,intent(out) :: array(:)    ! output array of tokens
-!-----------------------------------------------------------------------------------------------------------------------------------
-integer                       :: n                      ! max number of strings INPUT_LINE could split into if all delimiter
-integer,allocatable           :: ibegin(:)              ! positions in input string where tokens start
-integer,allocatable           :: iterm(:)               ! positions in input string where tokens end
-character(len=:),allocatable  :: dlim                   ! string containing delimiter characters
-character(len=:),allocatable  :: ordr                   ! string containing order keyword
-character(len=:),allocatable  :: nlls                   ! string containing nulls keyword
-integer                       :: ii,iiii                ! loop parameters used to control print order
-integer                       :: icount                 ! number of tokens found
-integer                       :: ilen                   ! length of input string with trailing spaces trimmed
-integer                       :: i10,i20,i30            ! loop counters
-integer                       :: icol                   ! pointer into input string as it is being parsed
-integer                       :: idlim                  ! number of delimiter characters
-integer                       :: ifound                 ! where next delimiter character is found in remaining input string data
-integer                       :: inotnull               ! count strings not composed of delimiters
-integer                       :: ireturn                ! number of tokens returned
-integer                       :: imax                   ! length of longest token
-!-----------------------------------------------------------------------------------------------------------------------------------
-   ! decide on value for optional DELIMITERS parameter
-   if (present(delimiters)) then                                     ! optional delimiter list was present
-      if(delimiters.ne.'')then                                       ! if DELIMITERS was specified and not null use it
-         dlim=delimiters
-      else                                                           ! DELIMITERS was specified on call as empty string
-         dlim=' '//char(9)//char(10)//char(11)//char(12)//char(13)//char(0) ! use default delimiter when not specified
-      endif
-   else                                                              ! no delimiter value was specified
-      dlim=' '//char(9)//char(10)//char(11)//char(12)//char(13)//char(0)    ! use default delimiter when not specified
-   endif
-   idlim=len(dlim)                                                   ! dlim a lot of blanks on some machines if dlim is a big string
-!-----------------------------------------------------------------------------------------------------------------------------------
-   if(present(order))then; ordr=lower(adjustl(order)); else; ordr='sequential'; endif ! decide on value for optional ORDER parameter
-   if(present(nulls))then; nlls=lower(adjustl(nulls)); else; nlls='ignore'    ; endif ! optional parameter
-!-----------------------------------------------------------------------------------------------------------------------------------
-   n=len(input_line)+1                        ! max number of strings INPUT_LINE could split into if all delimiter
-   allocate(ibegin(n))                        ! allocate enough space to hold starting location of tokens if string all tokens
-   allocate(iterm(n))                         ! allocate enough space to hold ending location of tokens if string all tokens
-   ibegin(:)=1
-   iterm(:)=1
-!-----------------------------------------------------------------------------------------------------------------------------------
-   ilen=len(input_line)                                           ! ILEN is the column position of the last non-blank character
-   icount=0                                                       ! how many tokens found
-   inotnull=0                                                     ! how many tokens found not composed of delimiters
-   imax=0                                                         ! length of longest token found
-!-----------------------------------------------------------------------------------------------------------------------------------
-   select case (ilen)
-!-----------------------------------------------------------------------------------------------------------------------------------
-   case (:0)                                                      ! command was totally blank
-!-----------------------------------------------------------------------------------------------------------------------------------
-   case default                                                   ! there is at least one non-delimiter in INPUT_LINE if get here
-      icol=1                                                      ! initialize pointer into input line
-      INFINITE: do i30=1,ilen,1                                   ! store into each array element
-         ibegin(i30)=icol                                         ! assume start new token on the character
-         if(index(dlim(1:idlim),input_line(icol:icol)).eq.0)then  ! if current character is not a delimiter
-            iterm(i30)=ilen                                       ! initially assume no more tokens
-            do i10=1,idlim                                        ! search for next delimiter
-               ifound=index(input_line(ibegin(i30):ilen),dlim(i10:i10))
-               IF(ifound.gt.0)then
-                  iterm(i30)=min(iterm(i30),ifound+ibegin(i30)-2)
-               endif
-            enddo
-            icol=iterm(i30)+2                                     ! next place to look as found end of this token
-            inotnull=inotnull+1                                   ! increment count of number of tokens not composed of delimiters
-         else                                                     ! character is a delimiter for a null string
-            iterm(i30)=icol-1                                     ! record assumed end of string. Will be less than beginning
-            icol=icol+1                                           ! advance pointer into input string
-         endif
-         imax=max(imax,iterm(i30)-ibegin(i30)+1)
-         icount=i30                                               ! increment count of number of tokens found
-         if(icol.gt.ilen)then                                     ! no text left
-            exit INFINITE
-         endif
-      enddo INFINITE
-!-----------------------------------------------------------------------------------------------------------------------------------
-   end select
-!-----------------------------------------------------------------------------------------------------------------------------------
-   select case (trim(adjustl(nlls)))
-   case ('ignore','','ignoreend')
-      ireturn=inotnull
-   case default
-      ireturn=icount
-   end select
-   allocate(character(len=imax) :: array(ireturn))                ! allocate the array to return
-   !allocate(array(ireturn))                                       ! allocate the array to turn
-!-----------------------------------------------------------------------------------------------------------------------------------
-   select case (trim(adjustl(ordr)))                              ! decide which order to store tokens
-   case ('reverse','right') ; ii=ireturn ; iiii=-1                ! last to first
-   case default             ; ii=1       ; iiii=1                 ! first to last
-   end select
-!-----------------------------------------------------------------------------------------------------------------------------------
-   do i20=1,icount                                                ! fill the array with the tokens that were found
-      if(iterm(i20).lt.ibegin(i20))then
-         select case (trim(adjustl(nlls)))
-         case ('ignore','','ignoreend')
-         case default
-            array(ii)=' '
-            ii=ii+iiii
-         end select
-      else
-         array(ii)=input_line(ibegin(i20):iterm(i20))
-         ii=ii+iiii
-      endif
-   enddo
-!-----------------------------------------------------------------------------------------------------------------------------------
-   end subroutine split
-!===================================================================================================================================
-elemental pure function lower(str,begin,end) result (string)
-
-character(len=*),parameter::ident_22="@(#)M_strings::lower(3f): Changes a string to lowercase over specified range"
-
-character(*), intent(In)     :: str
-character(len(str))          :: string
-integer,intent(in),optional  :: begin, end
-integer                      :: i
-integer                      :: ibegin, iend
-   string = str
-
-   ibegin = 1
-   if (present(begin))then
-      ibegin = max(ibegin,begin)
-   endif
-
-   iend = len_trim(str)
-   if (present(end))then
-      iend= min(iend,end)
-   endif
-
-   do i = ibegin, iend                               ! step thru each letter in the string in specified range
-      select case (str(i:i))
-      case ('A':'Z')
-         string(i:i) = char(iachar(str(i:i))+32)     ! change letter to miniscule
-      case default
-      end select
-   end do
-
-end function lower
-!===================================================================================================================================
-subroutine trimzeros(string)
-
-character(len=*),parameter::ident_50="@(#)M_strings::trimzeros(3fp): Delete trailing zeros from numeric decimal string"
-
-! if zero needs added at end assumes input string has room
-character(len=*)             :: string
-character(len=len(string)+2) :: str
-character(len=len(string))   :: exp          ! the exponent string if present
-integer                      :: ipos         ! where exponent letter appears if present
-integer                      :: i, ii
-   str=string                                ! working copy of string
-   ipos=scan(str,'eEdD')                     ! find end of real number if string uses exponent notation
-   if(ipos>0) then                           ! letter was found
-      exp=str(ipos:)                         ! keep exponent string so it can be added back as a suffix
-      str=str(1:ipos-1)                      ! just the real part, exponent removed will not have trailing zeros removed
-   endif
-   if(index(str,'.').eq.0)then               ! if no decimal character in original string add one to end of string
-      ii=len_trim(str)
-      str(ii+1:ii+1)='.'                     ! add decimal to end of string
-   endif
-   do i=len_trim(str),1,-1                   ! scanning from end find a non-zero character
-      select case(str(i:i))
-      case('0')                              ! found a trailing zero so keep trimming
-         cycle
-      case('.')                              ! found a decimal character at end of remaining string
-         if(i.le.1)then
-            str='0'
-         else
-            str=str(1:i-1)
-         endif
-         exit
-      case default
-         str=str(1:i)                        ! found a non-zero character so trim string and exit
-         exit
-      end select
-   end do
-   if(ipos>0)then                            ! if originally had an exponent place it back on
-      string=trim(str)//trim(exp)
-   else
-      string=str
-   endif
-end subroutine trimzeros
-!===================================================================================================================================
-subroutine a2r(chars,valu,ierr)
-
-character(len=*),parameter::ident_40="@(#)M_strings::a2r(3fp): subroutine returns real value from string"
-
-character(len=*),intent(in) :: chars                      ! input string
-real,intent(out)            :: valu                       ! value read from input string
-integer,intent(out)         :: ierr                       ! error flag (0 == no error)
-doubleprecision             :: valu8
-   valu8=0.0d0
-   call a2d(chars,valu8,ierr,onerr=0.0d0)
-   if(ierr.eq.0)then
-      if(valu8.le.huge(valu))then
-         valu=real(valu8)
-      else
-         write(*,*)'*a2r*','- value too large',valu8,'>',huge(valu)
-         valu=huge(valu)
-         ierr=-1
-      endif
-   endif
-end subroutine a2r
-!----------------------------------------------------------------------------------------------------------------------------------
-subroutine a2i(chars,valu,ierr)
-
-character(len=*),parameter::ident_41="@(#)M_strings::a2i(3fp): subroutine returns integer value from string"
-
-character(len=*),intent(in) :: chars                      ! input string
-integer,intent(out)         :: valu                       ! value read from input string
-integer,intent(out)         :: ierr                       ! error flag (0 == no error)
-doubleprecision             :: valu8
-   valu8=0.0d0
-   call a2d(chars,valu8,ierr,onerr=0.0d0)
-   if(valu8.le.huge(valu))then
-      if(valu8.le.huge(valu))then
-         valu=int(valu8)
-      else
-         write(*,*)'*a2i*','- value too large',valu8,'>',huge(valu)
-         valu=huge(valu)
-         ierr=-1
-      endif
-   endif
-end subroutine a2i
-!----------------------------------------------------------------------------------------------------------------------------------
-subroutine a2d(chars,valu,ierr,onerr)
-
-character(len=*),parameter::ident_42="@(#)M_strings::a2d(3fp): subroutine returns double value from string"
-
-!     1989,2016 John S. Urban.
-!
-!  o  works with any g-format input, including integer, real, and exponential.
-!  o  if an error occurs in the read, iostat is returned in ierr and value is set to zero.  if no error occurs, ierr=0.
-!  o  if the string happens to be 'eod' no error message is produced so this string may be used to act as an end-of-data.
-!     IERR will still be non-zero in this case.
-!----------------------------------------------------------------------------------------------------------------------------------
-character(len=*),intent(in)  :: chars                        ! input string
-character(len=:),allocatable :: local_chars
-doubleprecision,intent(out)  :: valu                         ! value read from input string
-integer,intent(out)          :: ierr                         ! error flag (0 == no error)
-class(*),optional,intent(in) :: onerr
-!----------------------------------------------------------------------------------------------------------------------------------
-character(len=*),parameter   :: fmt="('(bn,g',i5,'.0)')"     ! format used to build frmt
-character(len=15)            :: frmt                         ! holds format built to read input string
-character(len=256)           :: msg                          ! hold message from I/O errors
-integer                      :: intg
-integer                      :: pnd
-integer                      :: basevalue, ivalu
-character(len=3),save        :: nan_string='NaN'
-!----------------------------------------------------------------------------------------------------------------------------------
-   ierr=0                                                       ! initialize error flag to zero
-   local_chars=chars
-   msg=''
-   if(len(local_chars).eq.0)local_chars=' '
-   call substitute(local_chars,',','')                          ! remove any comma characters
-   pnd=scan(local_chars,'#:')
-   if(pnd.ne.0)then
-      write(frmt,fmt)pnd-1                                      ! build format of form '(BN,Gn.0)'
-      read(local_chars(:pnd-1),fmt=frmt,iostat=ierr,iomsg=msg)basevalue   ! try to read value from string
-      if(decodebase(local_chars(pnd+1:),basevalue,ivalu))then
-         valu=real(ivalu,kind=kind(0.0d0))
-      else
-         valu=0.0d0
-         ierr=-1
-      endif
-   else
-      select case(local_chars(1:1))
-      case('z','Z','h','H')                                     ! assume hexadecimal
-         frmt='(Z'//v2s(len(local_chars))//')'
-         read(local_chars(2:),frmt,iostat=ierr,iomsg=msg)intg
-         valu=dble(intg)
-      case('b','B')                                             ! assume binary (base 2)
-         frmt='(B'//v2s(len(local_chars))//')'
-         read(local_chars(2:),frmt,iostat=ierr,iomsg=msg)intg
-         valu=dble(intg)
-      case('o','O')                                             ! assume octal
-         frmt='(O'//v2s(len(local_chars))//')'
-         read(local_chars(2:),frmt,iostat=ierr,iomsg=msg)intg
-         valu=dble(intg)
-      case default
-         write(frmt,fmt)len(local_chars)                        ! build format of form '(BN,Gn.0)'
-         read(local_chars,fmt=frmt,iostat=ierr,iomsg=msg)valu   ! try to read value from string
-      end select
-   endif
-   if(ierr.ne.0)then                                            ! if an error occurred ierr will be non-zero.
-      if(present(onerr))then
-         select type(onerr)
-         type is (integer)
-            valu=onerr
-         type is (real)
-            valu=onerr
-         type is (doubleprecision)
-            valu=onerr
-         end select
-      else                                                      ! set return value to NaN
-         read(nan_string,'(g3.3)')valu
-      endif
-      if(local_chars.ne.'eod')then                           ! print warning message except for special value "eod"
-         write(*,*)'*a2d* - cannot produce number from string ['//trim(chars)//']'
-         if(msg.ne.'')then
-            write(*,*)'*a2d* - ['//trim(msg)//']'
-         endif
-      endif
-   endif
-end subroutine a2d
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()=
 !===================================================================================================================================

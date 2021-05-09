@@ -10,6 +10,9 @@ categories = ["command history"]
 keywords = ["fortran", "input editing"]
 homepage = "https://github.com/urbanjost/M_history.git"
 
+[dependencies]
+M_strings = { git = "https://github.com/urbanjost/M_strings.git" }
+
 [[test]]
 name="test_suite_M_history"
 source-dir="test"

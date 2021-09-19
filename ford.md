@@ -5,13 +5,12 @@ src_dir: src
          test
 output_dir: docs/fpm-ford
 project: M_history
-summary: interactive input editor
+summary: interactive input history editor
 project_github: https://github.com/urbanjost/M_history
 project_download:
 author: John S. Urban
 author_email: urbanjost@comcast.net
 github: https://github.com/urbanjost/M_history
-page_dir: ./docs/page
 media_dir: ./docs/images
 exclude_dir: ./archive
              ./FODDER

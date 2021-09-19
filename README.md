@@ -51,5 +51,14 @@ or just list it as a dependency in your fpm.toml project file.
 
 ## DOCUMENTATION
 
+### USER  
   + [M_history](https://urbanjost.github.io/M_history/M_history.html) as HTML
   + [M_history](md/redo.3.md) as markdown
+  + [CHANGELOG](docs/CHANGELOG.md) provides a history of significant changes
+
+### DEVELOPER
+   + [ford(1) output](https://urbanjost.github.io/M_uuid/fpm-ford/index.html).
+<!--
+   + [doxygen(1) output](https://urbanjost.github.io/M_uuid/doxygen_out/html/index.html).
+-->
+   + [github action status](docs/STATUS.md) 

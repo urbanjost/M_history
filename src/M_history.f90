@@ -1,7 +1,7 @@
 !>
 !!##NAME
 !!    redo(3f) - [M_history] Fortran-based Input History Editor
-!!    (LICENSE:PD)
+!!    (LICENSE:MIT)
 !!
 !!##SYNOPSIS
 !!
@@ -198,7 +198,7 @@
 !!##AUTHOR
 !!    John S. Urban, 1988,2009,2011,2015 (last change: Nov 2019)
 !!##LICENSE
-!!    Public Domain
+!!    MIT
 module M_history
 !
 !  Acting much like a line-mode editor, the REDO(3f) procedure lets

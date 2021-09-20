@@ -57,8 +57,8 @@ or just list it as a dependency in your fpm.toml project file.
   + [CHANGELOG](docs/CHANGELOG.md) provides a history of significant changes
 
 ### DEVELOPER
-  + [ford(1) output](https://urbanjost.github.io/M_uuid/fpm-ford/index.html).
+  + [ford(1) output](https://urbanjost.github.io/M_history/fpm-ford/index.html).
 <!--
-  + [doxygen(1) output](https://urbanjost.github.io/M_uuid/doxygen_out/html/index.html).
+  + [doxygen(1) output](https://urbanjost.github.io/M_history/doxygen_out/html/index.html).
 -->
   + [github action status](docs/STATUS.md) 

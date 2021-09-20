@@ -206,8 +206,8 @@ module M_history
 !  input. Built-in help and no dependence on terminal control sequences
 !  makes this a simple-to-master and portable input history editor.
 !
-use M_journal, only : journal
-use M_strings, only : change, modif, notabs, s2v, v2s, s2vs
+use, intrinsic :: iso_fortran_env, only : ERROR_UNIT        ! access computing environment
+use, intrinsic :: iso_fortran_env, only : output_unit, stderr=>error_unit
 implicit none
 private
 
@@ -222,6 +222,31 @@ private :: help_                   !  produce help text for redo(3f) usage
 
 integer,parameter :: READLEN=1024  ! width of history file
 
+
+integer,save,private       :: stdout=OUTPUT_UNIT
+logical,save               :: debug=.false.
+integer,save               :: last_int=0
+
+interface string_to_value
+   module procedure a2d, a2i
+end interface
+
+interface v2s
+   module procedure i2s
+end interface
+
+interface msg
+   module procedure msg_scalar, msg_one
+end interface msg
+
+interface journal
+   module procedure write_message_only        ! journal(c)               ! must have one string
+   module procedure where_write_message_all   ! journal(where,[g1-g9])   ! must have two strings
+end interface journal
+
+interface str
+   module procedure str_scalar, str_one
+end interface str
 contains
 !==================================================================================================================================!
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()!
@@ -700,6 +725,1598 @@ usage=[ &
       call journal('sc',usage(i))
    enddo
 end subroutine help_
+!===================================================================================================================================
+!()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()=
+!===================================================================================================================================
+function glob(tame,wild)
+
+logical                    :: glob
+character(len=*)           :: tame
+character(len=*)           :: wild
+character(len=len(tame)+1) :: tametext
+character(len=len(wild)+1) :: wildtext
+character(len=1),parameter :: null=char(0)
+integer                    :: wlen
+integer                    :: ti, wi
+integer                    :: i
+character(len=:),allocatable :: tbookmark, wbookmark
+   tametext=tame//null
+   wildtext=wild//null
+   tbookmark = null
+   wbookmark = null
+   wlen=len(wild)
+   wi=1
+   ti=1
+   do
+      if(wildtext(wi:wi) == '*')then
+         do i=wi,wlen
+            if(wildtext(wi:wi).eq.'*')then
+               wi=wi+1
+            else
+               exit
+            endif
+         enddo
+         if(wildtext(wi:wi).eq.null) then
+            glob=.true.
+            return
+         endif
+         if(wildtext(wi:wi) .ne. '?') then
+            do while (tametext(ti:ti) .ne. wildtext(wi:wi))
+               ti=ti+1
+               if (tametext(ti:ti).eq.null)then
+                  glob=.false.
+                  return
+               endif
+            enddo
+         endif
+         wbookmark = wildtext(wi:)
+         tbookmark = tametext(ti:)
+      elseif(tametext(ti:ti) .ne. wildtext(wi:wi) .and. wildtext(wi:wi) .ne. '?') then
+         if(wbookmark.ne.null) then
+            if(wildtext(wi:).ne. wbookmark) then
+               wildtext = wbookmark;
+               wlen=len_trim(wbookmark)
+               wi=1
+               if (tametext(ti:ti) .ne. wildtext(wi:wi)) then
+                  tbookmark=tbookmark(2:)
+                  tametext = tbookmark
+                  ti=1
+                  cycle
+               else
+                  wi=wi+1
+               endif
+            endif
+            if (tametext(ti:ti).ne.null) then
+               ti=ti+1
+               cycle
+            endif
+         endif
+         glob=.false.
+         return
+      endif
+      ti=ti+1
+      wi=wi+1
+      if (tametext(ti:ti).eq.null) then
+         if(wildtext(wi:wi).ne.null)then
+            do while (wildtext(wi:wi) == '*')
+               wi=wi+1
+               if(wildtext(wi:wi).eq.null)exit
+            enddo
+         endif
+         if (wildtext(wi:wi).eq.null)then
+            glob=.true.
+            return
+         endif
+         glob=.false.
+         return
+      endif
+   enddo
+end function glob
+function sep(input_line,delimiters,nulls)
+
+intrinsic index, min, present, len
+character(len=*),intent(in)              :: input_line
+character(len=*),optional,intent(in)     :: delimiters
+character(len=*),optional,intent(in)     :: nulls
+character(len=:),allocatable             :: sep(:)
+   call split(input_line,sep,delimiters,'right',nulls)
+end function sep
+subroutine split(input_line,array,delimiters,order,nulls)
+
+intrinsic index, min, present, len
+character(len=*),intent(in)              :: input_line
+character(len=*),optional,intent(in)     :: delimiters
+character(len=*),optional,intent(in)     :: order
+character(len=*),optional,intent(in)     :: nulls
+character(len=:),allocatable,intent(out) :: array(:)
+integer                       :: n
+integer,allocatable           :: ibegin(:)
+integer,allocatable           :: iterm(:)
+character(len=:),allocatable  :: dlim
+character(len=:),allocatable  :: ordr
+character(len=:),allocatable  :: nlls
+integer                       :: ii,iiii
+integer                       :: icount
+integer                       :: lgth
+integer                       :: i10,i20,i30
+integer                       :: icol
+integer                       :: idlim
+integer                       :: ifound
+integer                       :: inotnull
+integer                       :: ireturn
+integer                       :: imax
+   if (present(delimiters)) then
+      if(delimiters.ne.'')then
+         dlim=delimiters
+      else
+         dlim=' '//char(9)//char(10)//char(11)//char(12)//char(13)//char(0)
+      endif
+   else
+      dlim=' '//char(9)//char(10)//char(11)//char(12)//char(13)//char(0)
+   endif
+   idlim=len(dlim)
+   if(present(order))then; ordr=lower(adjustl(order)); else; ordr='sequential'; endif
+   if(present(nulls))then; nlls=lower(adjustl(nulls)); else; nlls='ignore'    ; endif
+   n=len(input_line)+1
+   if(allocated(ibegin))deallocate(ibegin)
+   if(allocated(iterm))deallocate(iterm)
+   allocate(ibegin(n))
+   allocate(iterm(n))
+   ibegin(:)=1
+   iterm(:)=1
+   lgth=len(input_line)
+   icount=0
+   inotnull=0
+   imax=0
+   if(lgth.gt.0)then
+      icol=1
+      infinite: do i30=1,lgth,1
+         ibegin(i30)=icol
+         if(index(dlim(1:idlim),input_line(icol:icol)).eq.0)then
+            iterm(i30)=lgth
+            do i10=1,idlim
+               ifound=index(input_line(ibegin(i30):lgth),dlim(i10:i10))
+               if(ifound.gt.0)then
+                  iterm(i30)=min(iterm(i30),ifound+ibegin(i30)-2)
+               endif
+            enddo
+            icol=iterm(i30)+2
+            inotnull=inotnull+1
+         else
+            iterm(i30)=icol-1
+            icol=icol+1
+         endif
+         imax=max(imax,iterm(i30)-ibegin(i30)+1)
+         icount=i30
+         if(icol.gt.lgth)then
+            exit infinite
+         endif
+      enddo infinite
+   endif
+   select case (trim(adjustl(nlls)))
+   case ('ignore','','ignoreend')
+      ireturn=inotnull
+   case default
+      ireturn=icount
+   end select
+   allocate(character(len=imax) :: array(ireturn))
+   select case (trim(adjustl(ordr)))
+   case ('reverse','right') ; ii=ireturn ; iiii=-1
+   case default             ; ii=1       ; iiii=1
+   end select
+   do i20=1,icount
+      if(iterm(i20).lt.ibegin(i20))then
+         select case (trim(adjustl(nlls)))
+         case ('ignore','','ignoreend')
+         case default
+            array(ii)=' '
+            ii=ii+iiii
+         end select
+      else
+         array(ii)=input_line(ibegin(i20):iterm(i20))
+         ii=ii+iiii
+      endif
+   enddo
+   end subroutine split
+function chomp(source_string,token,delimiters)
+
+character(len=*)                         :: source_string
+character(len=:),allocatable,intent(out) :: token
+character(len=*),intent(in),optional     :: delimiters
+integer                                  :: chomp
+character(len=:),allocatable             :: delimiters_local
+integer                                  :: token_start
+integer                                  :: token_end
+integer                                  :: isource_len
+   if(present(delimiters))then
+      delimiters_local=delimiters
+   else
+      delimiters_local=char(32)//char(09)//char(10)//char(13)
+   endif
+   isource_len=len(source_string)
+   token_start=1
+   do while (token_start .le. isource_len)
+      if(index(delimiters_local,source_string(token_start:token_start)) .ne. 0) then
+         token_start = token_start + 1
+      else
+         exit
+      endif
+   enddo
+   token_end=token_start
+   do while (token_end .le. isource_len-1)
+      if(index(delimiters_local,source_string(token_end+1:token_end+1)) .ne. 0) then
+         exit
+      endif
+      token_end = token_end + 1
+   enddo
+   chomp=isource_len-token_end
+   if(chomp.ge.0)then
+      token=source_string(token_start:token_end)
+      source_string=source_string(token_end+1:)
+   else
+      token=''
+      source_string=''
+   endif
+end function chomp
+
+subroutine substitute(targetline,old,new,ierr,start,end)
+
+character(len=*)               :: targetline
+character(len=*),intent(in)    :: old
+character(len=*),intent(in)    :: new
+integer,intent(out),optional   :: ierr
+integer,intent(in),optional    :: start
+integer,intent(in),optional    :: end
+character(len=len(targetline)) :: dum1
+integer                        :: ml, mr, ier1
+integer                        :: maxlengthout
+integer                        :: original_input_length
+integer                        :: len_old, len_new
+integer                        :: ladd
+integer                        :: ir
+integer                        :: ind
+integer                        :: il
+integer                        :: id
+integer                        :: ic
+integer                        :: ichr
+   if (present(start)) then
+      ml=start
+   else
+      ml=1
+   endif
+   if (present(end)) then
+      mr=end
+   else
+      mr=len(targetline)
+   endif
+   ier1=0
+   maxlengthout=len(targetline)
+   original_input_length=len_trim(targetline)
+   dum1(:)=' '
+   id=mr-ml
+   len_old=len(old)
+   len_new=len(new)
+   if(id.le.0)then
+      il=1
+      ir=maxlengthout
+      dum1(:)=' '
+   else
+      il=ml
+      ir=min0(mr,maxlengthout)
+      dum1=targetline(:il-1)
+   endif
+   if(len_old.eq.0)then
+      ichr=len_new + original_input_length
+      if(ichr.gt.maxlengthout)then
+         call journal('sc','*substitute* new line will be too long')
+         ier1=-1
+         if (present(ierr))ierr=ier1
+         return
+      endif
+      if(len_new.gt.0)then
+         dum1(il:)=new(:len_new)//targetline(il:original_input_length)
+      else
+         dum1(il:)=targetline(il:original_input_length)
+      endif
+      targetline(1:maxlengthout)=dum1(:maxlengthout)
+      ier1=1
+      if(present(ierr))ierr=ier1
+      return
+   endif
+   ichr=il
+   ic=il
+   loop: do
+      ind=index(targetline(ic:),old(:len_old))+ic-1
+      if(ind.eq.ic-1.or.ind.gt.ir)then
+         exit loop
+      endif
+      ier1=ier1+1
+      if(ind.gt.ic)then
+         ladd=ind-ic
+         if(ichr-1+ladd.gt.maxlengthout)then
+            ier1=-1
+            exit loop
+         endif
+         dum1(ichr:)=targetline(ic:ind-1)
+         ichr=ichr+ladd
+      endif
+      if(ichr-1+len_new.gt.maxlengthout)then
+         ier1=-2
+         exit loop
+      endif
+      if(len_new.ne.0)then
+         dum1(ichr:)=new(:len_new)
+         ichr=ichr+len_new
+      endif
+      ic=ind+len_old
+   enddo loop
+   select case (ier1)
+   case (:-1)
+      call journal('sc','*substitute* new line will be too long')
+   case (0)
+   case default
+      ladd=original_input_length-ic
+      if(ichr+ladd.gt.maxlengthout)then
+         call journal('sc','*substitute* new line will be too long')
+         ier1=-1
+         if(present(ierr))ierr=ier1
+         return
+      endif
+      if(ic.lt.len(targetline))then
+         dum1(ichr:)=targetline(ic:max(ic,original_input_length))
+      endif
+      targetline=dum1(:maxlengthout)
+   end select
+   if(present(ierr))ierr=ier1
+end subroutine substitute
+subroutine change(target_string,cmd,ierr)
+
+character(len=*),intent(inout)   :: target_string
+character(len=*),intent(in)      :: cmd
+character(len=1)                 :: delimiters
+integer                          :: ierr
+integer                          :: itoken
+integer,parameter                :: id=2
+character(len=:),allocatable     :: old,new
+logical                          :: ifok
+integer                          :: lmax
+integer                          :: start_token,end_token
+   lmax=len_trim(cmd)
+   if(lmax.ge.4)then
+      delimiters=cmd(id:id)
+      itoken=0
+
+      if(strtok(cmd(id:),itoken,start_token,end_token,delimiters)) then
+         old=cmd(start_token+id-1:end_token+id-1)
+      else
+         old=''
+      endif
+
+      if(cmd(id:id).eq.cmd(id+1:id+1))then
+         new=old
+         old=''
+      else
+         ifok=strtok(cmd(id:),itoken,start_token,end_token,delimiters)
+         if(end_token .eq. (len(cmd)-id+1) )end_token=len_trim(cmd(id:))
+         new=cmd(start_token+id-1:min(end_token+id-1,lmax))
+      endif
+
+      call substitute(target_string,old,new,ierr,1,len_trim(target_string))
+   else
+      ierr=-1
+      call journal('sc','*change* incorrect change directive -too short')
+   endif
+end subroutine change
+function strtok(source_string,itoken,token_start,token_end,delimiters) result(strtok_status)
+
+character(len=*),intent(in)  :: source_string
+character(len=*),intent(in)  :: delimiters
+integer,intent(inout)        :: itoken
+logical                      :: strtok_status
+integer,intent(out)          :: token_start
+integer,intent(inout)        :: token_end
+integer,save                 :: isource_len
+   if(itoken.le.0)then
+      token_start=1
+   else
+      token_start=token_end+1
+   endif
+   isource_len=len(source_string)
+   if(token_start.gt.isource_len)then
+      token_end=isource_len
+      strtok_status=.false.
+      return
+   endif
+   do while (token_start .le. isource_len)
+      if(index(delimiters,source_string(token_start:token_start)) .ne. 0) then
+         token_start = token_start + 1
+      else
+         exit
+      endif
+   enddo
+   token_end=token_start
+   do while (token_end .le. isource_len-1)
+      if(index(delimiters,source_string(token_end+1:token_end+1)) .ne. 0) then
+         exit
+      endif
+      token_end = token_end + 1
+   enddo
+   if (token_start .gt. isource_len) then
+      strtok_status=.false.
+   else
+      itoken=itoken+1
+      strtok_status=.true.
+   endif
+end function strtok
+subroutine modif(cline,mod)
+
+character(len=*)            :: cline
+character(len=*),intent(in) :: mod
+character(len=len(cline))   :: cmod
+character(len=3),parameter  :: c='#&^'
+integer                     :: maxscra
+character(len=len(cline))   :: dum2
+logical                     :: linsrt
+integer :: i, j, ic, ichr, iend, lmax, lmx1
+maxscra=len(cline)
+   cmod=trim(mod)
+   lmax=min0(len(cline),maxscra)
+   lmx1=lmax-1
+   dum2=' '
+   linsrt=.false.
+   iend=len_trim(cmod)
+   i=0
+   ic=0
+   ichr=0
+11 continue
+   i=i+1
+   if(ichr.gt.lmx1)goto 999
+   if(linsrt) then
+      if(i.gt.iend) cmod(i:i)=c(1:1)
+      if(cmod(i:i).eq.c(1:1))then
+         linsrt=.false.
+         if(ic+1.eq.i)then
+            ichr=ichr+1
+            dum2(ichr:ichr)=c(1:1)
+         endif
+         do j=ic,i
+            ichr=ichr+1
+            if(ichr.gt.lmax)goto 999
+            dum2(ichr:ichr)=cline(j:j)
+         enddo
+         ic=i
+         goto 1
+      endif
+      ichr=ichr+1
+      dum2(ichr:ichr)=cmod(i:i)
+   else
+      ic=ic+1
+      if(cmod(i:i).eq.c(1:1))goto 1
+      if(cmod(i:i).eq.c(3:3))then
+         linsrt=.true.
+         goto 1
+      endif
+      ichr=ichr+1
+      if(cmod(i:i).eq.c(2:2))then
+         dum2(ichr:ichr)=' '
+         goto 1
+      endif
+      if(cmod(i:i).eq.' ')then
+         dum2(ichr:ichr)=cline(ic:ic)
+      else
+         dum2(ichr:ichr)=cmod(i:i)
+      endif
+   endif
+1  continue
+   if(i.lt.lmax)goto 11
+999   continue
+   cline=dum2
+end subroutine modif
+elemental integer function len_white(string)
+
+character(len=*),intent(in):: string
+integer                    :: i10
+intrinsic len
+   len_white=0
+   do i10=len(string),1,-1
+      select case(string(i10:i10))
+      case(' ')
+      case(char(0))
+      case(char(9):char(13))
+      case default
+         len_white=i10
+         exit
+      end select
+   enddo
+end function len_white
+
+elemental pure function upper(str,begin,end) result (string)
+
+character(*), intent(in)      :: str
+integer, intent(in), optional :: begin,end
+character(len(str))           :: string
+integer                       :: i
+integer                       :: ibegin,iend
+integer,parameter             :: diff = iachar('A')-iachar('a')
+   string = str
+   ibegin=1
+   iend=len_trim(str)
+
+   if (present(begin))then
+      ibegin = min(max(ibegin,begin),iend)
+   endif
+
+   if (present(end))then
+      iend= max(1,min(iend,end))
+   endif
+
+   do concurrent (i = ibegin:iend)
+       select case (str(i:i))
+       case ('a':'z')
+          string(i:i) = char(iachar(str(i:i))+diff)
+       end select
+   enddo
+
+end function upper
+elemental pure function lower(str,begin,end) result (string)
+
+character(*), intent(in)     :: str
+character(len(str))          :: string
+integer,intent(in),optional  :: begin, end
+integer                      :: i
+integer                      :: ibegin, iend
+integer,parameter             :: diff = iachar('A')-iachar('a')
+   string = str
+   ibegin=1
+   iend=len_trim(str)
+
+   if (present(begin))then
+      ibegin = min(max(1,begin),iend)
+   endif
+
+   if (present(end))then
+      iend= max(1,min(iend,end))
+   endif
+
+   do concurrent (i = ibegin:iend)
+      select case (str(i:i))
+      case ('A':'Z')
+         string(i:i) = char(iachar(str(i:i))-diff)
+      case default
+      end select
+   enddo
+
+end function lower
+function indent(line)
+implicit none
+
+integer                        :: indent
+character(len=*),intent(in)    :: line
+integer                        :: i
+   indent=0
+   notspace: block
+      scan: do i=1,len(line)
+         if(line(i:i).ne.' ')then
+            indent=i-1
+            exit notspace
+         endif
+      enddo scan
+      indent=len(line)
+   endblock notspace
+end function indent
+
+elemental impure subroutine notabs(instr,outstr,lgth)
+
+character(len=*),intent(in)   :: instr
+character(len=*),intent(out)  :: outstr
+integer,intent(out)           :: lgth
+integer,parameter             :: tabsize=8
+integer                       :: ipos
+integer                       :: lenin
+integer                       :: lenout
+integer                       :: istep
+character(len=1)              :: c
+integer                       :: iade
+   ipos=1
+   lenin=len_trim(instr( 1:len(instr) ))
+   lenout=len(outstr)
+   outstr=" "
+      scan_line: do istep=1,lenin
+         c=instr(istep:istep)
+         iade=iachar(c)
+         expand_tabs : select case (iade)
+         case(9)
+            ipos = ipos + (tabsize - (mod(ipos-1,tabsize)))
+         case(10,13)
+            ipos=ipos+1
+         case default
+            if(ipos > lenout)then
+               call journal("*notabs* output string overflow")
+               exit
+            else
+               outstr(ipos:ipos)=c
+               ipos=ipos+1
+            endif
+         end select expand_tabs
+      enddo scan_line
+      ipos=min(ipos,lenout)
+      lgth=len_trim(outstr(:ipos))
+end subroutine notabs
+
+pure function adjustc(string,length)
+
+character(len=*),intent(in)  :: string
+integer,intent(in),optional  :: length
+character(len=:),allocatable :: adjustc
+integer                      :: inlen
+integer                      :: ileft
+   if(present(length))then
+      inlen=length
+      if(inlen.le.0)then
+         inlen=len(string)
+      endif
+   else
+      inlen=len(string)
+   endif
+   allocate(character(len=inlen):: adjustc)
+   adjustc(1:inlen)=' '
+   ileft =(inlen-len_trim(adjustl(string)))/2
+   if(ileft.gt.0)then
+      adjustc(ileft+1:inlen)=adjustl(string)
+   else
+      adjustc(1:inlen)=adjustl(string)
+   endif
+end function adjustc
+elemental function noesc(instr)
+
+character(len=*),intent(in) :: instr
+character(len=len(instr))   :: noesc
+integer                     :: ic,i10
+   noesc=''
+   do i10=1,len_trim(instr(1:len(instr)))
+      ic=iachar(instr(i10:i10))
+      if(ic.le.31.or.ic.eq.127)then
+         noesc(i10:i10)=' '
+      else
+         noesc(i10:i10)=instr(i10:i10)
+      endif
+   enddo
+end function noesc
+subroutine a2i(chars,valu,ierr)
+
+character(len=*),intent(in) :: chars
+integer,intent(out)         :: valu
+integer,intent(out)         :: ierr
+doubleprecision             :: valu8
+   valu8=0.0d0
+   call a2d(chars,valu8,ierr,onerr=0.0d0)
+   if(valu8.le.huge(valu))then
+      if(valu8.le.huge(valu))then
+         valu=int(valu8)
+      else
+         call journal('sc','*a2i*','- value too large',valu8,'>',huge(valu))
+         valu=huge(valu)
+         ierr=-1
+      endif
+   endif
+end subroutine a2i
+subroutine a2d(chars,valu,ierr,onerr)
+
+character(len=*),intent(in)  :: chars
+character(len=:),allocatable :: local_chars
+doubleprecision,intent(out)  :: valu
+integer,intent(out)          :: ierr
+class(*),optional,intent(in) :: onerr
+character(len=*),parameter   :: fmt="('(bn,g',i5,'.0)')"
+character(len=15)            :: frmt
+character(len=256)           :: msg
+integer                      :: intg
+integer                      :: pnd
+integer                      :: basevalue, ivalu
+character(len=3),save        :: nan_string='NaN'
+   ierr=0
+   local_chars=unquote(chars)
+   msg=''
+   if(len(local_chars).eq.0)local_chars=' '
+   call substitute(local_chars,',','')
+   pnd=scan(local_chars,'#:')
+   if(pnd.ne.0)then
+      write(frmt,fmt)pnd-1
+      read(local_chars(:pnd-1),fmt=frmt,iostat=ierr,iomsg=msg)basevalue
+      if(decodebase(local_chars(pnd+1:),basevalue,ivalu))then
+         valu=real(ivalu,kind=kind(0.0d0))
+      else
+         valu=0.0d0
+         ierr=-1
+      endif
+   else
+      select case(local_chars(1:1))
+      case('z','Z','h','H')
+         frmt='(Z'//v2s(len(local_chars))//')'
+         read(local_chars(2:),frmt,iostat=ierr,iomsg=msg)intg
+         valu=dble(intg)
+      case('b','B')
+         frmt='(B'//v2s(len(local_chars))//')'
+         read(local_chars(2:),frmt,iostat=ierr,iomsg=msg)intg
+         valu=dble(intg)
+      case('o','O')
+         frmt='(O'//v2s(len(local_chars))//')'
+         read(local_chars(2:),frmt,iostat=ierr,iomsg=msg)intg
+         valu=dble(intg)
+      case default
+         write(frmt,fmt)len(local_chars)
+         read(local_chars,fmt=frmt,iostat=ierr,iomsg=msg)valu
+      end select
+   endif
+   if(ierr.ne.0)then
+      if(present(onerr))then
+         select type(onerr)
+         type is (integer)
+            valu=onerr
+         type is (real)
+            valu=onerr
+         type is (doubleprecision)
+            valu=onerr
+         end select
+      else
+         read(nan_string,'(g3.3)')valu
+      endif
+      if(local_chars.ne.'eod')then
+         call journal('sc','*a2d* - cannot produce number from string ['//trim(chars)//']')
+         if(msg.ne.'')then
+            call journal('sc','*a2d* - ['//trim(msg)//']')
+         endif
+      endif
+   endif
+end subroutine a2d
+doubleprecision function s2v(chars,ierr,onerr)
+
+character(len=*),intent(in)  :: chars
+integer,optional             :: ierr
+doubleprecision              :: valu
+integer                      :: ierr_local
+class(*),intent(in),optional :: onerr
+
+   ierr_local=0
+   if(present(onerr))then
+      call a2d(chars,valu,ierr_local,onerr)
+   else
+      call a2d(chars,valu,ierr_local)
+   endif
+   if(present(ierr))then
+      ierr=ierr_local
+      s2v=valu
+   elseif(ierr_local.ne.0)then
+      write(*,*)'*s2v* stopped while reading '//trim(chars)
+      stop 1
+   else
+      s2v=valu
+   endif
+end function s2v
+doubleprecision function dble_s2v(chars)
+character(len=*),intent(in) :: chars
+   dble_s2v=s2v(chars)
+end function dble_s2v
+real function real_s2v(chars)
+character(len=*),intent(in) :: chars
+   real_s2v=real(s2v(chars))
+end function real_s2v
+integer function int_s2v(chars)
+character(len=*),intent(in) :: chars
+   int_s2v=int(s2v(chars))
+end function int_s2v
+function ints_s2v(chars)
+integer,allocatable         :: ints_s2v(:)
+character(len=*),intent(in) :: chars(:)
+integer                     :: i,isize
+   isize=size(chars)
+   allocate(ints_s2v(isize))
+   do i=1,isize
+      ints_s2v(i)=int(s2v(chars(i)))
+   enddo
+end function ints_s2v
+function reals_s2v(chars)
+real,allocatable            :: reals_s2v(:)
+character(len=*),intent(in) :: chars(:)
+integer                     :: i,isize
+   isize=size(chars)
+   allocate(reals_s2v(isize))
+   do i=1,isize
+      reals_s2v(i)=real(s2v(chars(i)))
+   enddo
+end function reals_s2v
+function dbles_s2v(chars)
+doubleprecision,allocatable :: dbles_s2v(:)
+character(len=*),intent(in) :: chars(:)
+integer                     :: i,isize
+   isize=size(chars)
+   allocate(dbles_s2v(isize))
+   do i=1,isize
+      dbles_s2v(i)=s2v(chars(i))
+   enddo
+end function dbles_s2v
+subroutine value_to_string(gval,chars,length,err,fmt,trimz)
+
+class(*),intent(in)                      :: gval
+character(len=*),intent(out)             :: chars
+integer,intent(out),optional             :: length
+integer,optional                         :: err
+integer                                  :: err_local
+character(len=*),optional,intent(in)     :: fmt
+logical,intent(in),optional              :: trimz
+character(len=:),allocatable             :: fmt_local
+character(len=1024)                      :: msg
+
+   if (present(fmt)) then
+      select type(gval)
+      type is (integer)
+         fmt_local='(i0)'
+         if(fmt.ne.'') fmt_local=fmt
+         write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
+      type is (real)
+         fmt_local='(bz,g23.10e3)'
+         fmt_local='(bz,g0.8)'
+         if(fmt.ne.'') fmt_local=fmt
+         write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
+      type is (doubleprecision)
+         fmt_local='(bz,g0)'
+         if(fmt.ne.'') fmt_local=fmt
+         write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
+      type is (logical)
+         fmt_local='(l1)'
+         if(fmt.ne.'') fmt_local=fmt
+         write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
+      class default
+         call journal('*value_to_string* UNKNOWN TYPE')
+         chars=' '
+      end select
+      if(fmt.eq.'') then
+         chars=adjustl(chars)
+         call trimzeros_(chars)
+      endif
+   else
+      err_local=-1
+      select type(gval)
+      type is (integer)
+         write(chars,*,iostat=err_local,iomsg=msg)gval
+      type is (real)
+         write(chars,*,iostat=err_local,iomsg=msg)gval
+      type is (doubleprecision)
+         write(chars,*,iostat=err_local,iomsg=msg)gval
+      type is (logical)
+         write(chars,*,iostat=err_local,iomsg=msg)gval
+      class default
+         chars=''
+      end select
+      chars=adjustl(chars)
+      if(index(chars,'.').ne.0) call trimzeros_(chars)
+   endif
+   if(present(trimz))then
+      if(trimz)then
+         chars=adjustl(chars)
+         call trimzeros_(chars)
+      endif
+   endif
+
+   if(present(length)) then
+      length=len_trim(chars)
+   endif
+
+   if(present(err)) then
+      err=err_local
+   elseif(err_local.ne.0)then
+      chars=chars//' *value_to_string* WARNING:['//trim(msg)//']'
+   endif
+
+end subroutine value_to_string
+function i2s(ivalue,fmt) result(outstr)
+
+integer,intent(in)           :: ivalue
+character(len=*),intent(in),optional :: fmt
+character(len=:),allocatable :: outstr
+character(len=80)            :: string
+   if(present(fmt))then
+      call value_to_string(ivalue,string,fmt=fmt)
+   else
+      call value_to_string(ivalue,string)
+   endif
+   outstr=trim(string)
+end function i2s
+subroutine trimzeros_(string)
+
+character(len=*)             :: string
+character(len=len(string)+2) :: str
+character(len=len(string))   :: exp
+integer                      :: ipos
+integer                      :: i, ii
+   str=string
+   ipos=scan(str,'eEdD')
+   if(ipos>0) then
+      exp=str(ipos:)
+      str=str(1:ipos-1)
+   endif
+   if(index(str,'.').eq.0)then
+      ii=len_trim(str)
+      str(ii+1:ii+1)='.'
+   endif
+   do i=len_trim(str),1,-1
+      select case(str(i:i))
+      case('0')
+         cycle
+      case('.')
+         if(i.le.1)then
+            str='0'
+         else
+            str=str(1:i-1)
+         endif
+         exit
+      case default
+         str=str(1:i)
+         exit
+      end select
+   enddo
+   if(ipos>0)then
+      string=trim(str)//trim(exp)
+   else
+      string=str
+   endif
+end subroutine trimzeros_
+function unquote(quoted_str,esc) result (unquoted_str)
+character(len=*),intent(in)          :: quoted_str
+character(len=1),optional,intent(in) :: esc
+character(len=:),allocatable         :: unquoted_str
+integer                              :: inlen
+character(len=1),parameter           :: single_quote = "'"
+character(len=1),parameter           :: double_quote = '"'
+integer                              :: quote
+integer                              :: before
+integer                              :: current
+integer                              :: iesc
+integer                              :: iput
+integer                              :: i
+logical                              :: inside
+   if(present(esc))then
+      iesc=iachar(esc)
+   else
+      iesc=-1
+   endif
+   inlen=len(quoted_str)
+   allocate(character(len=inlen) :: unquoted_str)
+   if(inlen.ge.1)then
+      if(quoted_str(1:1).eq.single_quote)then
+         quote=iachar(single_quote)
+      else
+         quote=iachar(double_quote)
+      endif
+   else
+      quote=iachar(double_quote)
+   endif
+   before=-2
+   unquoted_str(:)=''
+   iput=1
+   inside=.false.
+   stepthrough: do i=1,inlen
+      current=iachar(quoted_str(i:i))
+      if(before.eq.iesc)then
+           iput=iput-1
+           unquoted_str(iput:iput)=char(current)
+           iput=iput+1
+           before=-2
+      elseif(current.eq.quote)then
+         if(before.eq.quote)then
+           unquoted_str(iput:iput)=char(quote)
+           iput=iput+1
+           before=-2
+         elseif(.not.inside.and.before.ne.iesc)then
+            inside=.true.
+         else
+            before=current
+         endif
+      else
+         unquoted_str(iput:iput)=char(current)
+         iput=iput+1
+         before=current
+      endif
+   enddo stepthrough
+   unquoted_str=unquoted_str(:iput-1)
+end function unquote
+function s2vs(string,delim) result(darray)
+
+character(len=*),intent(in)        :: string
+character(len=*),optional          :: delim
+character(len=:),allocatable       :: delim_local
+doubleprecision,allocatable        :: darray(:)
+
+character(len=:),allocatable       :: carray(:)
+integer                            :: i
+integer                            :: ier
+   if(present(delim))then
+      delim_local=delim
+   else
+      delim_local=' ;,'
+   endif
+   call split(string,carray,delimiters=delim_local)
+   allocate(darray(size(carray)))
+   do i=1,size(carray)
+      call string_to_value(carray(i), darray(i), ier)
+   enddo
+end function s2vs
+elemental function isprint(onechar)
+
+character,intent(in) :: onechar
+logical              :: isprint
+   select case (onechar)
+      case (' ':'~')   ; isprint=.true.
+      case default     ; isprint=.false.
+   end select
+end function isprint
+elemental function isgraph(onechar)
+
+character,intent(in) :: onechar
+logical              :: isgraph
+   select case (iachar(onechar))
+   case (33:126)
+     isgraph=.true.
+   case default
+     isgraph=.false.
+   end select
+end function isgraph
+logical function base(x,b,y,a)
+implicit none
+character(len=*),intent(in)  :: x
+character(len=*),intent(out) :: y
+integer,intent(in)           :: b,a
+integer                      :: temp
+
+base=.true.
+if(decodebase(x,b,temp)) then
+   if(codebase(temp,a,y)) then
+   else
+      print *,'Error in coding number.'
+      base=.false.
+   endif
+else
+   print *,'Error in decoding number.'
+   base=.false.
+endif
+
+end function base
+
+logical function decodebase(string,basein,out_baseten)
+implicit none
+
+character(len=*),intent(in)  :: string
+integer,intent(in)           :: basein
+integer,intent(out)          :: out_baseten
+
+character(len=len(string))   :: string_local
+integer           :: long, i, j, k
+real              :: y
+real              :: mult
+character(len=1)  :: ch
+real,parameter    :: xmaxreal=real(huge(1))
+integer           :: out_sign
+integer           :: basein_local
+integer           :: ipound
+integer           :: ierr
+
+  string_local=upper(trim(adjustl(string)))
+  decodebase=.false.
+
+  ipound=index(string_local,'#')
+  if(basein.eq.0.and.ipound.gt.1)then
+     call string_to_value(string_local(:ipound-1),basein_local,ierr)
+     string_local=string_local(ipound+1:)
+     if(basein_local.ge.0)then
+        out_sign=1
+     else
+        out_sign=-1
+     endif
+     basein_local=abs(basein_local)
+  else
+     basein_local=abs(basein)
+     out_sign=1
+  endif
+
+  out_baseten=0
+  y=0.0
+  all: if(basein_local<2.or.basein_local>36) then
+    print *,'(*decodebase* ERROR: Base must be between 2 and 36. base=',basein_local
+  else all
+     out_baseten=0;y=0.0; mult=1.0
+     long=len_trim(string_local)
+     do i=1, long
+        k=long+1-i
+        ch=string_local(k:k)
+        if(ch.eq.'-'.and.k.eq.1)then
+           out_sign=-1
+           cycle
+        endif
+        if(ch<'0'.or.ch>'Z'.or.(ch>'9'.and.ch<'A'))then
+           write(*,*)'*decodebase* ERROR: invalid character ',ch
+           exit all
+        endif
+        if(ch<='9') then
+              j=iachar(ch)-iachar('0')
+        else
+              j=iachar(ch)-iachar('A')+10
+        endif
+        if(j>=basein_local)then
+           exit all
+        endif
+        y=y+mult*j
+        if(mult>xmaxreal/basein_local)then
+           exit all
+        endif
+        mult=mult*basein_local
+     enddo
+     decodebase=.true.
+     out_baseten=nint(out_sign*y)*sign(1,basein)
+  endif all
+end function decodebase
+logical function codebase(inval10,outbase,answer)
+implicit none
+
+integer,intent(in)           :: inval10
+integer,intent(in)           :: outbase
+character(len=*),intent(out) :: answer
+integer                      :: n
+real                         :: inval10_local
+integer                      :: outbase_local
+integer                      :: in_sign
+  answer=''
+  in_sign=sign(1,inval10)*sign(1,outbase)
+  inval10_local=abs(inval10)
+  outbase_local=abs(outbase)
+  if(outbase_local<2.or.outbase_local>36) then
+    print *,'*codebase* ERROR: base must be between 2 and 36. base was',outbase_local
+    codebase=.false.
+  else
+     do while(inval10_local>0.0 )
+        n=int(inval10_local-outbase_local*int(inval10_local/outbase_local))
+        if(n<10) then
+           answer=achar(iachar('0')+n)//answer
+        else
+           answer=achar(iachar('A')+n-10)//answer
+        endif
+        inval10_local=int(inval10_local/outbase_local)
+     enddo
+     codebase=.true.
+  endif
+  if(in_sign.eq.-1)then
+     answer='-'//trim(answer)
+  endif
+  if(answer.eq.'')then
+     answer='0'
+  endif
+end function codebase
+function todecimal(base, instr)
+
+character(len=36),parameter  :: alphanum = "0123456789abcdefghijklmnopqrstuvwxyz"
+integer,intent(in)           :: base
+character(*),intent(in)      :: instr
+character(len=:),allocatable :: instr_local
+integer                      :: todecimal
+integer                      :: length, i, n
+
+   instr_local=trim(lower(instr))
+   todecimal = 0
+   length = len(instr_local)
+   do i = 1, length
+      n = index(alphanum, instr_local(i:i)) - 1
+      n = n * base**(length-i)
+      todecimal = todecimal + n
+   enddo
+end function todecimal
+function tobase(base, number)
+
+character(len=36),parameter  :: alphanum = "0123456789abcdefghijklmnopqrstuvwxyz"
+integer,intent(in)           :: base
+integer,intent(in)           :: number
+character(len=:),allocatable :: tobase
+character(len=31)            :: holdit
+integer                      :: number_local, i, rem
+   number_local=number
+
+   holdit = "                               "
+   do i = 31, 1, -1
+      if(number_local < base) then
+         holdit(i:i) = alphanum(number_local+1:number_local+1)
+         exit
+      endif
+      rem = mod(number_local, base)
+      holdit(i:i) = alphanum(rem+1:rem+1)
+      number_local = number_local / base
+   enddo
+   tobase = adjustl(holdit)
+end function tobase
+
+function fmt(source_string,length)
+
+character(len=*),intent(in)       :: source_string
+integer,intent(in)                :: length
+integer                           :: itoken
+integer                           :: istart
+integer                           :: iend
+character(len=*),parameter        :: delimiters=' '
+character(len=:),allocatable      :: fmt(:)
+integer                           :: ilines
+integer                           :: ilength
+integer                           :: iword, iword_max
+integer                           :: i
+   do i=1,2
+      iword_max=0
+      ilines=1
+      ilength=0
+      itoken=0
+      do while ( strtok(source_string,itoken,istart,iend,delimiters) )
+         iword=iend-istart+1
+         iword_max=max(iword_max,iword)
+         if(iword.gt.length)then
+            if(ilength.ne.0)then
+               ilines=ilines+1
+            endif
+            if(i.eq.2)then
+               fmt(ilines)=source_string(istart:iend)//' '
+            endif
+            ilength=iword+1
+         elseif(ilength+iword.le.length)then
+            if(i.eq.2)then
+               fmt(ilines)=fmt(ilines)(:ilength)//source_string(istart:iend)
+            endif
+            ilength=ilength+iword+1
+         else
+            ilines=ilines+1
+            ilength=0
+            if(i.eq.2)then
+               fmt(ilines)=fmt(ilines)(:ilength)//source_string(istart:iend)
+            endif
+            ilength=iword+1
+         endif
+      enddo
+      if(i==1)then
+         allocate(character(len=max(length,iword_max)) :: fmt(ilines))
+         fmt=' '
+      endif
+   enddo
+   fmt=fmt(:ilines)
+end function fmt
+
+function msg_scalar(generic1, generic2, generic3, generic4, generic5, generic6, generic7, generic8, generic9,sep)
+implicit none
+
+class(*),intent(in),optional  :: generic1 ,generic2 ,generic3 ,generic4 ,generic5
+class(*),intent(in),optional  :: generic6 ,generic7 ,generic8 ,generic9
+character(len=*),intent(in),optional :: sep
+character(len=:),allocatable  :: sep_local
+character(len=:), allocatable :: msg_scalar
+character(len=4096)           :: line
+integer                       :: istart
+integer                       :: increment
+   if(present(sep))then
+      sep_local=sep
+      increment=len(sep)+1
+   else
+      sep_local=' '
+      increment=2
+   endif
+
+   istart=1
+   line=' '
+   if(present(generic1))call print_generic(generic1)
+   if(present(generic2))call print_generic(generic2)
+   if(present(generic3))call print_generic(generic3)
+   if(present(generic4))call print_generic(generic4)
+   if(present(generic5))call print_generic(generic5)
+   if(present(generic6))call print_generic(generic6)
+   if(present(generic7))call print_generic(generic7)
+   if(present(generic8))call print_generic(generic8)
+   if(present(generic9))call print_generic(generic9)
+   msg_scalar=trim(line)
+contains
+subroutine print_generic(generic)
+use,intrinsic :: iso_fortran_env, only : int8, int16, int32, int64, real32, real64, real128
+class(*),intent(in) :: generic
+   select type(generic)
+      type is (integer(kind=int8));     write(line(istart:),'(i0)') generic
+      type is (integer(kind=int16));    write(line(istart:),'(i0)') generic
+      type is (integer(kind=int32));    write(line(istart:),'(i0)') generic
+      type is (integer(kind=int64));    write(line(istart:),'(i0)') generic
+      type is (real(kind=real32));      write(line(istart:),'(1pg0)') generic
+      type is (real(kind=real64));      write(line(istart:),'(1pg0)') generic
+      type is (logical);                write(line(istart:),'(l1)') generic
+      type is (character(len=*));       write(line(istart:),'(a)') trim(generic)
+      type is (complex);                write(line(istart:),'("(",1pg0,",",1pg0,")")') generic
+   end select
+   istart=len_trim(line)+increment
+   line=trim(line)//sep_local
+end subroutine print_generic
+end function msg_scalar
+function msg_one(generic1, generic2, generic3, generic4, generic5, generic6, generic7, generic8, generic9,sep)
+implicit none
+
+class(*),intent(in)           :: generic1(:)
+class(*),intent(in),optional  :: generic2(:), generic3(:), generic4(:), generic5(:)
+class(*),intent(in),optional  :: generic6(:), generic7(:), generic8(:), generic9(:)
+character(len=*),intent(in),optional :: sep
+character(len=:),allocatable   :: sep_local
+character(len=:), allocatable :: msg_one
+character(len=4096)           :: line
+integer                       :: istart
+integer                       :: increment
+   if(present(sep))then
+      sep_local=sep
+      increment=len(sep)+1
+   else
+      sep_local=' '
+      increment=2
+   endif
+
+   istart=1
+   line=' '
+   call print_generic(generic1)
+   if(present(generic2))call print_generic(generic2)
+   if(present(generic3))call print_generic(generic3)
+   if(present(generic4))call print_generic(generic4)
+   if(present(generic5))call print_generic(generic5)
+   if(present(generic6))call print_generic(generic6)
+   if(present(generic7))call print_generic(generic7)
+   if(present(generic8))call print_generic(generic8)
+   if(present(generic9))call print_generic(generic9)
+   msg_one=trim(line)
+contains
+subroutine print_generic(generic)
+use,intrinsic :: iso_fortran_env, only : int8, int16, int32, int64, real32, real64, real128
+class(*),intent(in),optional :: generic(:)
+integer :: i
+   select type(generic)
+      type is (integer(kind=int8));     write(line(istart:),'("[",*(i0,1x))') generic
+      type is (integer(kind=int16));    write(line(istart:),'("[",*(i0,1x))') generic
+      type is (integer(kind=int32));    write(line(istart:),'("[",*(i0,1x))') generic
+      type is (integer(kind=int64));    write(line(istart:),'("[",*(i0,1x))') generic
+      type is (real(kind=real32));      write(line(istart:),'("[",*(1pg0,1x))') generic
+      type is (real(kind=real64));      write(line(istart:),'("[",*(1pg0,1x))') generic
+      type is (logical);                write(line(istart:),'("[",*(l1,1x))') generic
+      type is (character(len=*));       write(line(istart:),'("[",:*("""",a,"""",1x))') (trim(generic(i)),i=1,size(generic))
+      type is (complex);                write(line(istart:),'("[",*("(",1pg0,",",1pg0,")",1x))') generic
+   end select
+   istart=len_trim(line)+increment
+   line=trim(line)//"]"//sep_local
+end subroutine print_generic
+end function msg_one
+
+subroutine where_write_message(where,msg)
+
+character(len=*),intent(in)  :: where
+character(len=*),intent(in)  :: msg
+logical,save                       :: trailopen=.false.
+integer,save                       :: itrail
+character,save                     :: comment='#'
+integer                            :: i
+integer                            :: ios
+integer                            :: times
+character(len=3)                   :: adv
+
+character(len=:),allocatable,save  :: prefix_template
+character(len=:),allocatable       :: prefix
+logical,save                       :: prefix_it=.false.
+character(len=4096)                :: mssge
+   adv='yes'
+   prefix=''
+   times=0
+   do i=1,len_trim(where)
+      select case(where(i:i))
+      case('T','t')
+         if(trailopen) then
+            write(itrail,'(a)',advance=adv)prefix//trim(msg)
+         endif
+      case('S','s')
+         write(stdout,'(a)',advance=adv)prefix//trim(msg)
+         times=times+1
+      case('E','e')
+         write(stderr,'(a)',advance=adv)prefix//trim(msg)
+         times=times+1
+      case('+'); adv='no'
+      case('>'); debug=.true.
+      case('<'); debug=.false.
+      case('%')
+         if(msg.eq.'')then
+            prefix_it=.false.
+         else
+            prefix_template=msg
+            prefix_it=.true.
+         endif
+      case('N')
+         if(msg.ne.' '.and.msg.ne.'#N#'.and.msg.ne.'"#N#"')then
+            close(unit=last_int,iostat=ios)
+            open(unit=last_int,file=adjustl(trim(msg)),iostat=ios)
+            if(ios.eq.0)then
+               stdout=last_int
+            else
+               write(*,*)'*journal* error opening redirected output file, ioerr=',ios
+               write(*,*)'*journal* msg='//trim(msg)
+            endif
+         elseif(msg.eq.' ')then
+            close(unit=last_int,iostat=ios)
+            stdout=6
+         endif
+      case('C','c')
+         if(trailopen)then
+            write(itrail,'(3a)',advance=adv)prefix,comment,trim(msg)
+         elseif(times.eq.0)then
+         endif
+      case('D','d')
+         if(debug)then
+            if(trailopen)then
+               write(itrail,'(4a)',advance=adv)prefix,comment,'DEBUG: ',trim(msg)
+            elseif(times.eq.0)then
+               write(stdout,'(3a)',advance=adv)prefix,'DEBUG:',trim(msg)
+               times=times+1
+            endif
+         endif
+      case('F','f')
+         flush(unit=itrail,iostat=ios,iomsg=mssge)
+         if(ios.ne.0)then
+            write(*,'(a)') trim(mssge)
+         endif
+      case('A','a')
+         if(msg.ne.'')then
+            open(newunit=itrail,status='unknown',access='sequential',file=adjustl(trim(msg)),&
+            & form='formatted',iostat=ios,position='append')
+            trailopen=.true.
+         endif
+      case('O','o')
+         if(msg.ne.'')then
+            open(newunit=itrail,status='unknown',access='sequential', file=adjustl(trim(msg)),form='formatted',iostat=ios)
+            trailopen=.true.
+         else
+            if(trailopen)then
+               write(itrail,'(4a)',advance=adv)prefix,comment,'closing trail file:',trim(msg)
+            endif
+            close(unit=itrail,iostat=ios)
+            trailopen=.false.
+         endif
+      case default
+         write(stdout,'(a)',advance=adv)'*journal* bad WHERE value '//trim(where)//' when msg=['//trim(msg)//']'
+      end select
+   enddo
+end subroutine where_write_message
+
+subroutine where_write_message_all(where, g0,g1,g2,g3,g4,g5,g6,g7,g8,g9,nospace)
+implicit none
+character(len=*),intent(in)   :: where
+class(*),intent(in)           :: g0
+class(*),intent(in),optional  :: g1,g2,g3,g4,g5,g6,g7,g8,g9
+logical,intent(in),optional   :: nospace
+   call where_write_message(where,str(g0, g1, g2, g3, g4, g5, g6, g7, g8, g9,nospace))
+end subroutine where_write_message_all
+
+subroutine write_message_only(message)
+
+character(len=*),intent(in)          :: message
+   call where_write_message('sc',trim(message))
+end subroutine write_message_only
+function str_scalar(generic0, generic1, generic2, generic3, generic4, generic5, generic6, generic7, generic8, generic9, &
+                  & generica, genericb, genericc, genericd, generice, genericf, genericg, generich, generici, genericj, &
+                  & sep)
+implicit none
+class(*),intent(in),optional  :: generic0, generic1, generic2, generic3, generic4
+class(*),intent(in),optional  :: generic5, generic6, generic7, generic8, generic9
+class(*),intent(in),optional  :: generica, genericb, genericc, genericd, generice
+class(*),intent(in),optional  :: genericf, genericg, generich, generici, genericj
+character(len=*),intent(in),optional :: sep
+character(len=:), allocatable :: str_scalar
+character(len=4096)           :: line
+integer                       :: istart
+integer                       :: increment
+character(len=:),allocatable  :: sep_local
+   if(present(sep))then
+      sep_local=sep
+      increment=len(sep)+1
+   else
+      sep_local=' '
+      increment=2
+   endif
+
+   istart=1
+   line=''
+   if(present(generic0))call print_generic(generic0)
+   if(present(generic1))call print_generic(generic1)
+   if(present(generic2))call print_generic(generic2)
+   if(present(generic3))call print_generic(generic3)
+   if(present(generic4))call print_generic(generic4)
+   if(present(generic5))call print_generic(generic5)
+   if(present(generic6))call print_generic(generic6)
+   if(present(generic7))call print_generic(generic7)
+   if(present(generic8))call print_generic(generic8)
+   if(present(generic9))call print_generic(generic9)
+   if(present(generica))call print_generic(generica)
+   if(present(genericb))call print_generic(genericb)
+   if(present(genericc))call print_generic(genericc)
+   if(present(genericd))call print_generic(genericd)
+   if(present(generice))call print_generic(generice)
+   if(present(genericf))call print_generic(genericf)
+   if(present(genericg))call print_generic(genericg)
+   if(present(generich))call print_generic(generich)
+   if(present(generici))call print_generic(generici)
+   if(present(genericj))call print_generic(genericj)
+   str_scalar=trim(line)
+contains
+subroutine print_generic(generic)
+use,intrinsic :: iso_fortran_env, only : int8, int16, int32, int64, real32, real64, real128
+class(*),intent(in) :: generic
+   select type(generic)
+      type is (integer(kind=int8));     write(line(istart:),'(i0)') generic
+      type is (integer(kind=int16));    write(line(istart:),'(i0)') generic
+      type is (integer(kind=int32));    write(line(istart:),'(i0)') generic
+      type is (integer(kind=int64));    write(line(istart:),'(i0)') generic
+      type is (real(kind=real32));      write(line(istart:),'(1pg0)') generic
+      type is (real(kind=real64));      write(line(istart:),'(1pg0)') generic
+      type is (logical);                write(line(istart:),'(l1)') generic
+      type is (character(len=*));       write(line(istart:),'(a)') trim(generic)
+      type is (complex);                write(line(istart:),'("(",1pg0,",",1pg0,")")') generic
+   end select
+   istart=len_trim(line)+increment
+   line=trim(line)//sep_local
+end subroutine print_generic
+
+end function str_scalar
+function str_one(generic0,generic1, generic2, generic3, generic4, generic5, generic6, generic7, generic8, generic9,sep)
+implicit none
+class(*),intent(in)           :: generic0(:)
+class(*),intent(in),optional  :: generic1(:), generic2(:), generic3(:), generic4(:), generic5(:)
+class(*),intent(in),optional  :: generic6(:), generic7(:), generic8(:), generic9(:)
+character(len=*),intent(in),optional :: sep
+character(len=:),allocatable  :: sep_local
+character(len=:), allocatable :: str_one
+character(len=4096)           :: line
+integer                       :: istart
+integer                       :: increment
+   if(present(sep))then
+      sep_local=sep
+      increment=len(sep)+1
+   else
+      sep_local=' '
+      increment=2
+   endif
+
+   istart=1
+   line=' '
+   call print_generic(generic0)
+   if(present(generic1))call print_generic(generic1)
+   if(present(generic2))call print_generic(generic2)
+   if(present(generic3))call print_generic(generic3)
+   if(present(generic4))call print_generic(generic4)
+   if(present(generic5))call print_generic(generic5)
+   if(present(generic6))call print_generic(generic6)
+   if(present(generic7))call print_generic(generic7)
+   if(present(generic8))call print_generic(generic8)
+   if(present(generic9))call print_generic(generic9)
+   str_one=trim(line)
+contains
+
+subroutine print_generic(generic)
+use,intrinsic :: iso_fortran_env, only : int8, int16, int32, int64, real32, real64, real128
+class(*),intent(in),optional :: generic(:)
+integer :: i
+   select type(generic)
+      type is (integer(kind=int8));     write(line(istart:),'("[",*(i0,1x))') generic
+      type is (integer(kind=int16));    write(line(istart:),'("[",*(i0,1x))') generic
+      type is (integer(kind=int32));    write(line(istart:),'("[",*(i0,1x))') generic
+      type is (integer(kind=int64));    write(line(istart:),'("[",*(i0,1x))') generic
+      type is (real(kind=real32));      write(line(istart:),'("[",*(1pg0,1x))') generic
+      type is (real(kind=real64));      write(line(istart:),'("[",*(1pg0,1x))') generic
+      type is (logical);                write(line(istart:),'("[",*(l1,1x))') generic
+      type is (character(len=*));       write(line(istart:),'("[",:*("""",a,"""",1x))') (trim(generic(i)),i=1,size(generic))
+      type is (complex);                write(line(istart:),'("[",*("(",1pg0,",",1pg0,")",1x))') generic
+      class default
+         stop 'unknown type in *print_generic*'
+   end select
+   line=trim(line)//"]"//sep_local
+   istart=len_trim(line)+increment
+end subroutine print_generic
+
+end function str_one
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()=
 !===================================================================================================================================

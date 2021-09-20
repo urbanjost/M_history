@@ -362,7 +362,7 @@ integer                        :: iread
 integer                        :: istart
 integer                        :: ios
 integer                        :: ii
-integer                        :: ilen
+integer                        :: ilong
 integer                        :: icall
 integer                        :: iup
 integer                        :: ix
@@ -417,8 +417,8 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
    endif
 !-----------------------------------------------------------------------------------------------------------------------------------
    READLINE: do                                             ! display buffer and decide on command on first call or read command
-      ilen=max(1,len_trim(redoline(1:ibuf)))                ! find length of command to redo
-      write(*,'(a,a)')'!',redoline(:ilen)                   ! show old command
+      ilong=max(1,len_trim(redoline(1:ibuf)))               ! find length of command to redo
+      write(*,'(a,a)')'!',redoline(:ilong)                  ! show old command
       if(icall.ne.0)then                                    ! if not first call read the directive
          read(lun_local,'(a)',iostat=ios)cinbuf
          if(ios.ne.0)then                                   ! if there was an I/O error reread line
@@ -728,90 +728,6 @@ end subroutine help_
 !===================================================================================================================================
 !()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()()=
 !===================================================================================================================================
-function glob(tame,wild)
-
-logical                    :: glob
-character(len=*)           :: tame
-character(len=*)           :: wild
-character(len=len(tame)+1) :: tametext
-character(len=len(wild)+1) :: wildtext
-character(len=1),parameter :: null=char(0)
-integer                    :: wlen
-integer                    :: ti, wi
-integer                    :: i
-character(len=:),allocatable :: tbookmark, wbookmark
-   tametext=tame//null
-   wildtext=wild//null
-   tbookmark = null
-   wbookmark = null
-   wlen=len(wild)
-   wi=1
-   ti=1
-   do
-      if(wildtext(wi:wi) == '*')then
-         do i=wi,wlen
-            if(wildtext(wi:wi).eq.'*')then
-               wi=wi+1
-            else
-               exit
-            endif
-         enddo
-         if(wildtext(wi:wi).eq.null) then
-            glob=.true.
-            return
-         endif
-         if(wildtext(wi:wi) .ne. '?') then
-            do while (tametext(ti:ti) .ne. wildtext(wi:wi))
-               ti=ti+1
-               if (tametext(ti:ti).eq.null)then
-                  glob=.false.
-                  return
-               endif
-            enddo
-         endif
-         wbookmark = wildtext(wi:)
-         tbookmark = tametext(ti:)
-      elseif(tametext(ti:ti) .ne. wildtext(wi:wi) .and. wildtext(wi:wi) .ne. '?') then
-         if(wbookmark.ne.null) then
-            if(wildtext(wi:).ne. wbookmark) then
-               wildtext = wbookmark;
-               wlen=len_trim(wbookmark)
-               wi=1
-               if (tametext(ti:ti) .ne. wildtext(wi:wi)) then
-                  tbookmark=tbookmark(2:)
-                  tametext = tbookmark
-                  ti=1
-                  cycle
-               else
-                  wi=wi+1
-               endif
-            endif
-            if (tametext(ti:ti).ne.null) then
-               ti=ti+1
-               cycle
-            endif
-         endif
-         glob=.false.
-         return
-      endif
-      ti=ti+1
-      wi=wi+1
-      if (tametext(ti:ti).eq.null) then
-         if(wildtext(wi:wi).ne.null)then
-            do while (wildtext(wi:wi) == '*')
-               wi=wi+1
-               if(wildtext(wi:wi).eq.null)exit
-            enddo
-         endif
-         if (wildtext(wi:wi).eq.null)then
-            glob=.true.
-            return
-         endif
-         glob=.false.
-         return
-      endif
-   enddo
-end function glob
 function sep(input_line,delimiters,nulls)
 
 intrinsic index, min, present, len
@@ -918,46 +834,6 @@ integer                       :: imax
       endif
    enddo
    end subroutine split
-function chomp(source_string,token,delimiters)
-
-character(len=*)                         :: source_string
-character(len=:),allocatable,intent(out) :: token
-character(len=*),intent(in),optional     :: delimiters
-integer                                  :: chomp
-character(len=:),allocatable             :: delimiters_local
-integer                                  :: token_start
-integer                                  :: token_end
-integer                                  :: isource_len
-   if(present(delimiters))then
-      delimiters_local=delimiters
-   else
-      delimiters_local=char(32)//char(09)//char(10)//char(13)
-   endif
-   isource_len=len(source_string)
-   token_start=1
-   do while (token_start .le. isource_len)
-      if(index(delimiters_local,source_string(token_start:token_start)) .ne. 0) then
-         token_start = token_start + 1
-      else
-         exit
-      endif
-   enddo
-   token_end=token_start
-   do while (token_end .le. isource_len-1)
-      if(index(delimiters_local,source_string(token_end+1:token_end+1)) .ne. 0) then
-         exit
-      endif
-      token_end = token_end + 1
-   enddo
-   chomp=isource_len-token_end
-   if(chomp.ge.0)then
-      token=source_string(token_start:token_end)
-      source_string=source_string(token_end+1:)
-   else
-      token=''
-      source_string=''
-   endif
-end function chomp
 
 subroutine substitute(targetline,old,new,ierr,start,end)
 
@@ -1148,10 +1024,10 @@ integer,save                 :: isource_len
       strtok_status=.true.
    endif
 end function strtok
-subroutine modif(cline,mod)
+subroutine modif(cline,modi)
 
 character(len=*)            :: cline
-character(len=*),intent(in) :: mod
+character(len=*),intent(in) :: modi
 character(len=len(cline))   :: cmod
 character(len=3),parameter  :: c='#&^'
 integer                     :: maxscra
@@ -1159,7 +1035,7 @@ character(len=len(cline))   :: dum2
 logical                     :: linsrt
 integer :: i, j, ic, ichr, iend, lmax, lmx1
 maxscra=len(cline)
-   cmod=trim(mod)
+   cmod=trim(modi)
    lmax=min0(len(cline),maxscra)
    lmx1=lmax-1
    dum2=' '
@@ -1212,23 +1088,6 @@ maxscra=len(cline)
 999   continue
    cline=dum2
 end subroutine modif
-elemental integer function len_white(string)
-
-character(len=*),intent(in):: string
-integer                    :: i10
-intrinsic len
-   len_white=0
-   do i10=len(string),1,-1
-      select case(string(i10:i10))
-      case(' ')
-      case(char(0))
-      case(char(9):char(13))
-      case default
-         len_white=i10
-         exit
-      end select
-   enddo
-end function len_white
 
 elemental pure function upper(str,begin,end) result (string)
 
@@ -1287,23 +1146,6 @@ integer,parameter             :: diff = iachar('A')-iachar('a')
    enddo
 
 end function lower
-function indent(line)
-implicit none
-
-integer                        :: indent
-character(len=*),intent(in)    :: line
-integer                        :: i
-   indent=0
-   notspace: block
-      scan: do i=1,len(line)
-         if(line(i:i).ne.' ')then
-            indent=i-1
-            exit notspace
-         endif
-      enddo scan
-      indent=len(line)
-   endblock notspace
-end function indent
 
 elemental impure subroutine notabs(instr,outstr,lgth)
 
@@ -1343,45 +1185,6 @@ integer                       :: iade
       lgth=len_trim(outstr(:ipos))
 end subroutine notabs
 
-pure function adjustc(string,length)
-
-character(len=*),intent(in)  :: string
-integer,intent(in),optional  :: length
-character(len=:),allocatable :: adjustc
-integer                      :: inlen
-integer                      :: ileft
-   if(present(length))then
-      inlen=length
-      if(inlen.le.0)then
-         inlen=len(string)
-      endif
-   else
-      inlen=len(string)
-   endif
-   allocate(character(len=inlen):: adjustc)
-   adjustc(1:inlen)=' '
-   ileft =(inlen-len_trim(adjustl(string)))/2
-   if(ileft.gt.0)then
-      adjustc(ileft+1:inlen)=adjustl(string)
-   else
-      adjustc(1:inlen)=adjustl(string)
-   endif
-end function adjustc
-elemental function noesc(instr)
-
-character(len=*),intent(in) :: instr
-character(len=len(instr))   :: noesc
-integer                     :: ic,i10
-   noesc=''
-   do i10=1,len_trim(instr(1:len(instr)))
-      ic=iachar(instr(i10:i10))
-      if(ic.le.31.or.ic.eq.127)then
-         noesc(i10:i10)=' '
-      else
-         noesc(i10:i10)=instr(i10:i10)
-      endif
-   enddo
-end function noesc
 subroutine a2i(chars,valu,ierr)
 
 character(len=*),intent(in) :: chars
@@ -1626,13 +1429,13 @@ subroutine trimzeros_(string)
 
 character(len=*)             :: string
 character(len=len(string)+2) :: str
-character(len=len(string))   :: exp
+character(len=len(string))   :: expo
 integer                      :: ipos
 integer                      :: i, ii
    str=string
    ipos=scan(str,'eEdD')
    if(ipos>0) then
-      exp=str(ipos:)
+      expo=str(ipos:)
       str=str(1:ipos-1)
    endif
    if(index(str,'.').eq.0)then
@@ -1656,7 +1459,7 @@ integer                      :: i, ii
       end select
    enddo
    if(ipos>0)then
-      string=trim(str)//trim(exp)
+      string=trim(str)//trim(expo)
    else
       string=str
    endif
@@ -1741,26 +1544,7 @@ integer                            :: ier
       call string_to_value(carray(i), darray(i), ier)
    enddo
 end function s2vs
-elemental function isprint(onechar)
 
-character,intent(in) :: onechar
-logical              :: isprint
-   select case (onechar)
-      case (' ':'~')   ; isprint=.true.
-      case default     ; isprint=.false.
-   end select
-end function isprint
-elemental function isgraph(onechar)
-
-character,intent(in) :: onechar
-logical              :: isgraph
-   select case (iachar(onechar))
-   case (33:126)
-     isgraph=.true.
-   case default
-     isgraph=.false.
-   end select
-end function isgraph
 logical function base(x,b,y,a)
 implicit none
 character(len=*),intent(in)  :: x

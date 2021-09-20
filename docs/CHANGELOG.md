@@ -22,10 +22,17 @@ checked ...
    - [ ] registered in fpm(1) repository
 
 ---
-**2021-02-10**  John S. Urban  <https://github.com/urbanjost>
+**2021-09-19**  John S. Urban  <https://github.com/urbanjost>
+
+### :red_circle: FIX:
+     + made a stand-alone version for building with make instead of requiring
+       fpm(1) and external fpm(1) packages
+         
+---
+**2019-12-22**  John S. Urban  <https://github.com/urbanjost>
 
 ### :green_circle: ADD:
-     initial release on github
+     + initial release on github
 ---
 
 <!--

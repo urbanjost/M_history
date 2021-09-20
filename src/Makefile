@@ -9,9 +9,9 @@ PROG = ${PROGFILES:.f90=}
 
 CPROG = ${CPROGFILES:.c=}
 
-SRCS =  M_history_standalone.f90 
+SRCS =  M_history.f90 
 
-OBJS =  M_history_standalone.o 
+OBJS =  M_history.o 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # platform-specific values you will probably change
 # 

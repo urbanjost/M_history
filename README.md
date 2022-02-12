@@ -49,7 +49,7 @@ or just list it as a dependency in your fpm.toml project file.
      M_history        = { git = "https://github.com/urbanjost/M_history.git" }
 ```
 
-## DOCUMENTATION
+## DOCUMENTATION   ![docs](docs/images/docs.gif)
 
 ### USER  
   + [M_history](https://urbanjost.github.io/M_history/M_history.html) as HTML

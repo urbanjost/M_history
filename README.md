@@ -1,4 +1,4 @@
-# M_history
+# M_history ![M_history](docs/images/M_history.gif)
 
 A Fortran subroutine called redo(3f) may be used to give a line-mode
 command history to interactive programs.

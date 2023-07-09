@@ -7,7 +7,7 @@ output_dir: docs/fpm-ford
 project: M_history
 summary: interactive input history editor
 project_github: https://github.com/urbanjost/M_history
-project_download:
+project_download: https://github.com/urbanjost/M_history/archive/refs/heads/master.zip
 author: John S. Urban
 author_email: urbanjost@comcast.net
 author_pic: docs/images/greek_phoenix.gif

@@ -10,9 +10,12 @@ categories = ["command history"]
 keywords = ["fortran", "input editing"]
 homepage = "https://github.com/urbanjost/M_history.git"
 
+[build]
+   module-naming = true
+
 [[test]]
 name="test_suite_M_history"
 source-dir="test"
 main="test_suite_M_history.f90"
 [test.dependencies]
-M_framework = { git = "https://github.com/urbanjost/M_framework.git" }
+M_framework = {namespace = "GPF"}

@@ -1,0 +1,493 @@
+<!-- -*- mode: jinja2 -*- -->
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+      <meta name="description" content="interactive input history editor">
+    <meta name="author" content="John S. Urban" >
+    <link rel="icon" href="../favicon.png">
+
+    <title>M_history &ndash; M_history</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <link href="../css/pygments.css" rel="stylesheet">
+    <link href="../css/font-awesome.min.css" rel="stylesheet">
+    <link href="../css/local.css" rel="stylesheet">
+      <link  href="../tipuesearch/tipuesearch.css" rel="stylesheet">
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="../js/svg-pan-zoom.min.js"></script>
+  </head>
+
+  <body>
+
+    <!-- Fixed navbar -->
+    <div class="container-fluid mb-sm-4 mb-xl-2">
+      <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container">
+          <a class="navbar-brand" href="../index.html">M_history </a>
+          <button type="button" class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbar"
+                  aria-expanded="false" aria-controls="navbar" aria-label="Toggle navigation">
+                  <span class="navbar-toggler-icon">
+          </button>
+
+          <div id="navbar" class="navbar-collapse collapse">
+            <ul class="navbar-nav">
+                  <li class="nav-item">
+                    <a class="nav-link" href="../lists/files.html">Source Files</a>
+                  </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/modules.html">Modules</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/procedures.html">Procedures</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="../lists/programs.html">Programs</a>
+                </li>
+            </ul>
+              <div class="d-flex align-items-end flex-grow-1">
+                <form action="../search.html" role="search" class="ms-auto">
+                  <input type="text" class="form-control" aria-label="Search" placeholder="Search" name="q" id="tipue_search_input" autocomplete="off" required>
+                </form>
+              </div>
+          </div><!--/.nav-collapse -->
+        </div>
+      </nav>
+    </div>
+
+    <div class="container">
+  <div class="row">
+    <h1>M_history
+      <small>Module</small>
+      
+    </h1>
+      <div class="container p-2 mb-4 bg-light border rounded-3">
+    <div class="row align-items-center justify-content-between" id="info-bar">
+      <div class="col">
+        <ul class="list-inline" style="margin-bottom:0px;display:inline">
+
+            <li class="list-inline-item" id="statements"><i class="fa fa-list-ol"></i>
+              <a data-bs-toggle="tooltip"
+                 data-bs-placement="bottom" data-html="true"
+                 title="100.0% of total for modules and submodules.">1738 statements</a>
+            </li>
+
+            <li class="list-inline-item" id="source-file">
+              <i class="fa fa-code"></i>
+              <a href="../src/M_history.f90"> Source File</a>
+            </li>
+        </ul>
+      </div>
+      <div class="col">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb justify-content-end mb-0">
+                <li class="breadcrumb-item"><a href='../sourcefile/m_history.f90.html'>M_history.f90</a></li>
+            <li class="breadcrumb-item active" aria-current="page">M_history</li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+  </div>
+  <script>
+    $(function () {
+    $('[data-bs-toggle="tooltip"]').tooltip()
+    })
+  </script>
+
+  </div>
+
+  <div class="row">
+    <div class="col-md-3">
+        <div id="sidebar">
+      <h3>Contents</h3>
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+      <div class="card mb-4">
+      <a data-bs-toggle="collapse" href="#subs-0"
+         aria-expanded="false" aria-controls="subs-0">
+         <h4 class="card-header bg-primary text-white">Subroutines</h4>
+      </a>
+      <div id="subs-0" class="collapse">
+        <div class="list-group list-group-flush">
+            <a class="list-group-item" href="../module/m_history.html#proc-redo">redo</a>
+        </div>
+      </div>
+    </div>
+
+  
+  
+  
+  
+  
+  
+  
+
+
+  </div>
+
+    </div>
+
+    <div class="col-md-9" id='text'>
+      <h2 id="name">NAME</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">redo</span><span class="p">(</span><span class="mi">3</span><span class="n">f</span><span class="p">)</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="o">[</span><span class="n">M_history</span><span class="o">]</span><span class="w"> </span><span class="k">Fortran</span><span class="o">-</span><span class="n">based</span><span class="w"> </span><span class="k">Input</span><span class="w"> </span><span class="n">History</span><span class="w"> </span><span class="n">Editor</span>
+<span class="p">(</span><span class="nl">LICENSE</span><span class="p">:</span><span class="n">MIT</span><span class="p">)</span>
+</code></pre></div>
+
+<h2 id="synopsis">SYNOPSIS</h2>
+<div class="codehilite"><pre><span></span><code>subroutine redo(inputline,r)
+
+  character(len=*) :: inputline
+  character(len=1),intent(in),optional :: r
+</code></pre></div>
+
+<h2 id="description">DESCRIPTION</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">the</span><span class="w"> </span><span class="n">redo</span><span class="p">(</span><span class="mi">3</span><span class="n">f</span><span class="p">)</span><span class="w"> </span><span class="n">routine</span><span class="w"> </span><span class="n">lets</span><span class="w"> </span><span class="n">you</span><span class="w"> </span><span class="n">recall</span><span class="p">,</span><span class="w"> </span><span class="n">list</span><span class="p">,</span><span class="w"> </span><span class="n">save</span><span class="p">,</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="n">modify</span><span class="w"> </span><span class="n">previously</span>
+<span class="n">entered</span><span class="w"> </span><span class="n">program</span><span class="w"> </span><span class="n">input</span><span class="o">.</span><span class="w"> </span><span class="n">Built</span><span class="o">-</span><span class="ow">in</span><span class="w"> </span><span class="n">help</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">included</span><span class="o">.</span>
+
+<span class="n">The</span><span class="w"> </span><span class="n">redo</span><span class="p">(</span><span class="mi">3</span><span class="n">f</span><span class="p">)</span><span class="w"> </span><span class="n">input</span><span class="w"> </span><span class="n">history</span><span class="w"> </span><span class="n">editor</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">simple</span><span class="o">-</span><span class="n">to</span><span class="o">-</span><span class="n">use</span><span class="w"> </span><span class="n">input</span><span class="w"> </span><span class="n">history</span>
+<span class="n">editor</span><span class="w"> </span><span class="n">interface</span><span class="w"> </span><span class="n">modeled</span><span class="w"> </span><span class="n">on</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">CDC</span><span class="w"> </span><span class="n">NOS</span><span class="w"> </span><span class="n">command</span><span class="w"> </span><span class="n">REDO</span><span class="o">.</span><span class="w"> </span><span class="n">It</span><span class="w"> </span><span class="n">uses</span><span class="w"> </span><span class="n">a</span>
+<span class="n">line</span><span class="w"> </span><span class="n">editor</span><span class="w"> </span><span class="n">model</span><span class="w"> </span><span class="n">that</span><span class="w"> </span><span class="n">means</span><span class="w"> </span><span class="n">no</span><span class="w"> </span><span class="n">special</span><span class="w"> </span><span class="n">escape</span><span class="w"> </span><span class="n">characters</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="n">control</span>
+<span class="n">characters</span><span class="w"> </span><span class="n">are</span><span class="w"> </span><span class="n">required</span><span class="o">.</span><span class="w"> </span><span class="n">Typically</span><span class="p">,</span><span class="w"> </span><span class="n">only</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">few</span><span class="w"> </span><span class="n">minutes</span><span class="w"> </span><span class="n">are</span><span class="w"> </span><span class="n">required</span>
+<span class="n">to</span><span class="w"> </span><span class="k">master</span><span class="w"> </span><span class="n">usage</span><span class="o">.</span>
+
+<span class="n">When</span><span class="w"> </span><span class="n">using</span><span class="w"> </span><span class="n">redo</span><span class="p">(</span><span class="mi">3</span><span class="n">f</span><span class="p">)</span><span class="w"> </span><span class="n">input</span><span class="w"> </span><span class="n">lines</span><span class="w"> </span><span class="n">are</span><span class="w"> </span><span class="n">usually</span><span class="w"> </span><span class="n">first</span><span class="w"> </span><span class="n">read</span><span class="w"> </span><span class="n">into</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">character</span>
+<span class="n">variable</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="n">then</span><span class="w"> </span><span class="n">passed</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">routine</span><span class="o">.</span><span class="w"> </span><span class="n">The</span><span class="w"> </span><span class="n">returned</span><span class="w"> </span><span class="n">string</span><span class="w"> </span><span class="n">can</span><span class="w"> </span><span class="n">then</span>
+<span class="n">be</span><span class="w"> </span><span class="n">parsed</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="n">read</span><span class="w"> </span><span class="n">from</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">an</span><span class="w"> </span><span class="n">internal</span><span class="w"> </span><span class="n">READ</span><span class="p">(</span><span class="mi">3</span><span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="w"> </span><span class="n">So</span><span class="p">,</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">example</span><span class="p">,</span>
+<span class="k">if</span><span class="w"> </span><span class="n">you</span><span class="w"> </span><span class="n">have</span><span class="w"> </span><span class="n">an</span><span class="w"> </span><span class="n">existing</span><span class="w"> </span><span class="n">READ</span><span class="p">(</span><span class="mi">3</span><span class="n">f</span><span class="p">)</span><span class="w"> </span><span class="n">such</span><span class="w"> </span><span class="k">as</span>
+
+<span class="w">   </span><span class="n">READ</span><span class="p">(</span><span class="o">*</span><span class="p">,</span><span class="mi">101</span><span class="p">)</span><span class="w"> </span><span class="n">A</span><span class="p">,</span><span class="n">I</span><span class="p">,</span><span class="n">K</span>
+
+<span class="n">replace</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="n">with</span><span class="w"> </span><span class="n">something</span><span class="w"> </span><span class="n">similar</span><span class="w"> </span><span class="n">to</span>
+
+<span class="w">  </span><span class="n">USE</span><span class="w"> </span><span class="n">M_HISTORY</span><span class="p">,</span><span class="n">ONLY</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="n">REDO</span>
+<span class="w">  </span><span class="n">CHARACTER</span><span class="p">(</span><span class="n">LEN</span><span class="o">=</span><span class="mi">255</span><span class="p">)</span><span class="w"> </span><span class="p">::</span><span class="w"> </span><span class="n">LINE</span><span class="w"> </span><span class="o">!</span><span class="w"> </span><span class="n">make</span><span class="w"> </span><span class="n">variable</span><span class="w"> </span><span class="n">big</span><span class="w"> </span><span class="n">enough</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">read</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">line</span>
+<span class="w">        </span><span class="p">:</span>
+<span class="w">        </span><span class="p">:</span>
+<span class="w">  </span><span class="n">READ</span><span class="p">(</span><span class="o">*</span><span class="p">,</span><span class="s1">&#39;(A)&#39;</span><span class="p">)</span><span class="w"> </span><span class="n">LINE</span><span class="w">   </span><span class="o">!</span><span class="w"> </span><span class="n">read</span><span class="w"> </span><span class="n">line</span><span class="w"> </span><span class="n">into</span><span class="w"> </span><span class="n">character</span><span class="w"> </span><span class="n">variable</span>
+<span class="w">  </span><span class="n">CALL</span><span class="w"> </span><span class="n">REDO</span><span class="p">(</span><span class="n">LINE</span><span class="p">)</span><span class="w">      </span><span class="o">!</span><span class="w"> </span><span class="k">pass</span><span class="w"> </span><span class="n">line</span><span class="w"> </span><span class="n">to</span><span class="w"> </span><span class="n">REDO</span><span class="p">(</span><span class="mi">3</span><span class="n">f</span><span class="p">)</span><span class="o">.</span><span class="w"> </span><span class="n">This</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">no</span><span class="o">-</span><span class="n">op</span><span class="w"> </span><span class="n">except</span>
+<span class="w">                       </span><span class="o">!</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">storing</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">line</span><span class="w"> </span><span class="n">into</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">input</span><span class="w"> </span><span class="n">history</span>
+<span class="w">                       </span><span class="o">!</span><span class="w"> </span><span class="n">unless</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">input</span><span class="w"> </span><span class="n">line</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="s2">&quot;r&quot;</span><span class="w"> </span><span class="n">command</span>
+<span class="w">  </span><span class="n">READ</span><span class="p">(</span><span class="n">LINE</span><span class="p">,</span><span class="mi">101</span><span class="p">)</span><span class="n">A</span><span class="p">,</span><span class="n">I</span><span class="p">,</span><span class="n">K</span><span class="w">  </span><span class="o">!</span><span class="w"> </span><span class="n">read</span><span class="w"> </span><span class="n">from</span><span class="w"> </span><span class="n">variable</span><span class="w"> </span><span class="n">like</span><span class="w"> </span><span class="n">you</span><span class="w"> </span><span class="n">did</span><span class="w"> </span><span class="n">from</span><span class="w"> </span><span class="n">file</span>
+</code></pre></div>
+
+<h2 id="options">OPTIONS</h2>
+<div class="codehilite"><pre><span></span><code>  inputline    line to record into history buffer file or to edit.
+
+  r            Optional character to use as command to invoke editing.
+               Defaults to &#39;r&#39;.
+</code></pre></div>
+
+<h2 id="usage">USAGE</h2>
+<div class="codehilite"><pre><span></span><code>When prompted for an input line by your program you may at any time
+enter &quot;r&quot; on a line by itself, or a line beginning with &quot;r r_command&quot;
+and you will enter the command history edit mode. Now you can recall
+and edit previous input or compose an input line using the editor
+commands.
+
+By default, you will be editing the last line you entered, shifted
+one character to the right by an exclamation character.
+
+The character you respond with in column one controls what happens next.
+
+o If you enter &quot;?&quot; while in command edit mode, help is displayed.
+
+o If the last input line is not the desired line to edit,
+  select the line to edit by entering its line number or by
+  using the /,l,u, and d commands (see below for details) to find the desired input line.
+o Next enter an editing directive (c,m) to edit the selected line. The
+  &quot;change&quot; command will change all occurrences of an old string to a
+  new string ...
+
+   c/old/new/
+
+o or the &quot;modify&quot; command can be used with the special characters # &amp;amp; and ^ ...
+    o A # under a character will delete a character.
+    o An &quot;&amp;&quot; (ampersand) will cause the character above it to be replaced with a space.
+    o  To insert a string enter ^string#.
+    o Otherwise, enter a character under one in the currently displayed command and it will replace it.
+    o hit RETURN to start another edit of the line
+o Once the change is executed you will be prompted for another edit
+  directive
+o You will stay in edit mode until you enter a return on a
+  blank line to feed your line to your program; or enter &quot;.&quot; or
+  &quot;q&quot; (which means cancel changes and return a blank line).
+
+A detailed summary of the main edit-mode commands follows. In the
+descriptions, N stands for a number ...
+</code></pre></div>
+
+<p>LISTING COMMAND HISTORY
+     l|p N      list from line N. -N shows N last lines
+     L|P N      same as &lsquo;l&rsquo; except no line numbers (for pasting)
+     /string    search for simple string in all history lines</p>
+<p>Note that the buffer is set to the last line displayed</p>
+<p>POSITIONING TO PREVIOUS COMMANDS
+     u N        up through buffer
+     d N        down through buffer
+     N          load line number</p>
+<p>EDITING THE CURRENT BUFFER LINE
+     c/oldstring/newstring/   change all occurrences of old string
+                              to new string. Note that s
+                              (for substitute) is a synonym for c
+                              (for change).</p>
+<div class="codehilite"><pre><span></span><code>                          For the &quot;c&quot; directive the second character
+                          becomes the delimiter. Traditionally one
+                          usually uses a delimiter of / unless the
+                          string you are editing contains /.
+
+ mmod_string    If the first character of your entry is m or blank,
+          o REPLACE a string by entering a replacement character under it
+          o LEAVE a character alone by leaving a space under it
+          o DELETE a character by putting a # character under it
+          o BLANK OUT a character by putting an &amp; under it
+          o INSERT A STRING by entering ^STRING#
+
+   The &quot;modify&quot; directive takes a little practice but this single
+   directive accommodates positionally deleting, replacing, and
+   inserting text. it is hardest using &quot;modify&quot; to put the strings
+   &quot;&amp;&quot; and &quot;#&quot; into your lines. to put a # or &amp; character into a
+   string use the &#39;c&#39; command instead or ^&amp;# or ^##.
+
+ ;N N N N ...  Append specified lines to current line
+</code></pre></div>
+
+<p>HELP
+        h|?    display help text</p>
+<p>SYSTEM COMMANDS
+        !cmd   execute system command</p>
+<p>DUMPING AND LOADING THE COMMAND HISTORY</p>
+<div class="codehilite"><pre><span></span><code>    w FILENAME   write entire command history to specified file
+    r FILENAME   replace command history with file contents
+    a FILENAME   append lines from file onto command history
+</code></pre></div>
+
+<h2 id="example-program">EXAMPLE PROGRAM</h2>
+<p>Sample program</p>
+<div class="codehilite"><pre><span></span><code><span class="w">   </span><span class="nx">program</span><span class="w"> </span><span class="nx">demo_redo</span>
+<span class="w">   </span><span class="nx">use</span><span class="w"> </span><span class="nx">M_history</span><span class="p">,</span><span class="w"> </span><span class="nx">only</span><span class="w"> </span><span class="p">:</span><span class="w"> </span><span class="nx">redo</span>
+<span class="w">   </span><span class="nx">implicit</span><span class="w"> </span><span class="nx">none</span>
+<span class="w">   </span><span class="nx">character</span><span class="p">(</span><span class="nx">len</span><span class="p">=</span><span class="mi">1024</span><span class="p">)</span><span class="w"> </span><span class="o">::</span><span class="w">  </span><span class="nx">line</span>
+<span class="w">   </span><span class="nx">integer</span><span class="w">             </span><span class="o">::</span><span class="w"> </span><span class="nx">ios</span>
+<span class="w">   </span><span class="nx">integer</span><span class="w">             </span><span class="o">::</span><span class="w"> </span><span class="nx">cstat</span>
+<span class="w">   </span><span class="nx">character</span><span class="p">(</span><span class="nx">len</span><span class="p">=</span><span class="mi">256</span><span class="p">)</span><span class="w">  </span><span class="o">::</span><span class="w"> </span><span class="nx">sstat</span>
+<span class="w">   </span><span class="nx">write</span><span class="p">(</span><span class="o">*</span><span class="p">,</span><span class="err">&#39;</span><span class="p">(</span><span class="nx">a</span><span class="p">)</span><span class="err">&#39;</span><span class="p">)</span><span class="w">                                             </span><span class="o">&amp;</span>
+<span class="w">   </span><span class="o">&amp;</span><span class="w"> </span><span class="err">&#39;</span><span class="nx">REDO</span><span class="p">(</span><span class="mi">3</span><span class="nx">f</span><span class="p">)</span><span class="w"> </span><span class="nx">COMMAND</span><span class="w"> </span><span class="nx">INPUT</span><span class="w"> </span><span class="nx">EDITOR</span><span class="err">&#39;</span><span class="p">,</span><span class="w">                         </span><span class="o">&amp;</span>
+<span class="w">   </span><span class="o">&amp;</span><span class="w"> </span><span class="err">&#39;</span><span class="nx">enter</span><span class="w"> </span><span class="s">&quot;r&quot;</span><span class="w"> </span><span class="k">or</span><span class="w"> </span><span class="s">&quot;r r_command&quot;</span><span class="w"> </span><span class="nx">on</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">input</span><span class="w"> </span><span class="nx">line</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">go</span><span class="err">&#39;</span><span class="p">,</span><span class="w">    </span><span class="o">&amp;</span>
+<span class="w">   </span><span class="o">&amp;</span><span class="w"> </span><span class="err">&#39;</span><span class="nx">into</span><span class="w"> </span><span class="nx">history</span><span class="w"> </span><span class="nx">edit</span><span class="w"> </span><span class="nx">mode</span><span class="p">.</span><span class="w"> </span><span class="nx">Once</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="nx">history</span><span class="w"> </span><span class="nx">edit</span><span class="w"> </span><span class="nx">mode</span><span class="w"> </span><span class="nx">you</span><span class="err">&#39;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span>
+<span class="w">   </span><span class="o">&amp;</span><span class="w"> </span><span class="err">&#39;</span><span class="nx">may</span><span class="w"> </span><span class="nx">enter</span><span class="w"> </span><span class="s">&quot;?&quot;</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">get</span><span class="w"> </span><span class="nx">some</span><span class="w"> </span><span class="nx">help</span><span class="p">.</span><span class="w"> </span><span class="nx">Enter</span><span class="w"> </span><span class="s">&quot;quit&quot;</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">exit</span><span class="err">&#39;</span><span class="p">,</span><span class="w">  </span><span class="o">&amp;</span>
+<span class="w">   </span><span class="o">&amp;</span><span class="w"> </span><span class="err">&#39;</span><span class="nx">the</span><span class="w"> </span><span class="nx">program</span><span class="p">.</span><span class="err">&#39;</span>
+<span class="w">   </span><span class="nx">do</span>
+<span class="w">      </span><span class="nx">write</span><span class="p">(</span><span class="o">*</span><span class="p">,</span><span class="err">&#39;</span><span class="p">(</span><span class="nx">a</span><span class="p">)</span><span class="err">&#39;</span><span class="p">,</span><span class="nx">advance</span><span class="p">=</span><span class="err">&#39;</span><span class="nx">no</span><span class="sc">&#39;)&#39;</span><span class="p">&gt;</span><span class="o">-&gt;</span><span class="err">&#39;</span><span class="w">    </span><span class="p">!</span><span class="w"> </span><span class="nx">write</span><span class="w"> </span><span class="nx">prompt</span>
+<span class="w">      </span><span class="nx">read</span><span class="p">(</span><span class="o">*</span><span class="p">,</span><span class="err">&#39;</span><span class="p">(</span><span class="nx">a</span><span class="p">)</span><span class="err">&#39;</span><span class="p">,</span><span class="nx">iostat</span><span class="p">=</span><span class="nx">ios</span><span class="p">)</span><span class="w"> </span><span class="nx">line</span><span class="w">       </span><span class="p">!</span><span class="w"> </span><span class="nx">read</span><span class="w"> </span><span class="nx">new</span><span class="w"> </span><span class="nx">input</span><span class="w"> </span><span class="nx">line</span>
+<span class="w">      </span><span class="p">!</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="s">&quot;r&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">edit</span><span class="w"> </span><span class="k">and</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="nx">a</span><span class="w"> </span><span class="nx">line</span><span class="w"> </span><span class="nx">from</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">history</span><span class="w"> </span><span class="nx">editor</span>
+<span class="w">      </span><span class="nx">call</span><span class="w"> </span><span class="nx">redo</span><span class="p">(</span><span class="nx">line</span><span class="p">)</span><span class="w"> </span><span class="p">!</span><span class="w"> </span><span class="nx">store</span><span class="w"> </span><span class="nx">into</span><span class="w"> </span><span class="nx">history</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="k">not</span><span class="w"> </span><span class="s">&quot;r&quot;</span><span class="p">.</span>
+<span class="w">      </span><span class="k">if</span><span class="p">(</span><span class="nx">line</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="err">&#39;</span><span class="nx">quit</span><span class="err">&#39;</span><span class="p">)</span><span class="nx">stop</span><span class="w"> </span><span class="p">!</span><span class="w"> </span><span class="nx">exit</span><span class="w"> </span><span class="nx">program</span><span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nx">user</span><span class="w"> </span><span class="nx">enters</span><span class="w"> </span><span class="s">&quot;quit&quot;</span>
+<span class="w">      </span><span class="p">!</span><span class="w"> </span><span class="nx">now</span><span class="w"> </span><span class="nx">call</span><span class="w"> </span><span class="nx">user</span><span class="w"> </span><span class="nx">code</span><span class="w"> </span><span class="nx">to</span><span class="w"> </span><span class="nx">process</span><span class="w"> </span><span class="nx">new</span><span class="w"> </span><span class="nx">line</span><span class="w"> </span><span class="nx">of</span><span class="w"> </span><span class="nx">data</span>
+<span class="w">      </span><span class="p">!</span><span class="w"> </span><span class="nx">As</span><span class="w"> </span><span class="nx">an</span><span class="w"> </span><span class="nx">example</span><span class="p">,</span><span class="w"> </span><span class="nx">call</span><span class="w"> </span><span class="nx">the</span><span class="w"> </span><span class="nx">system</span><span class="w"> </span><span class="nx">shell</span>
+<span class="w">      </span><span class="nx">call</span><span class="w"> </span><span class="nx">execute_command_line</span><span class="p">(</span><span class="nx">trim</span><span class="p">(</span><span class="nx">line</span><span class="p">),</span><span class="nx">cmdstat</span><span class="p">=</span><span class="nx">cstat</span><span class="p">,</span><span class="nx">cmdmsg</span><span class="p">=</span><span class="nx">sstat</span><span class="p">)</span>
+<span class="w">   </span><span class="nx">enddo</span>
+<span class="w">   </span><span class="nx">end</span><span class="w"> </span><span class="nx">program</span><span class="w"> </span><span class="nx">demo_redo</span>
+</code></pre></div>
+
+<h2 id="sample-usage">SAMPLE USAGE</h2>
+<div class="codehilite"><pre><span></span><code><span class="n">The</span><span class="w"> </span><span class="n">example</span><span class="w"> </span><span class="n">program</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">basically</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">loop</span><span class="w"> </span><span class="n">that</span><span class="w"> </span><span class="k">reads</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">command</span><span class="w"> </span><span class="k">from</span>
+<span class="n">standard</span><span class="w"> </span><span class="k">input</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="n">executes</span><span class="w"> </span><span class="n">it</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">subshell</span><span class="w"> </span><span class="n">unless</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="ss">&quot;r&quot;</span>
+<span class="n">command</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">entered</span><span class="p">.</span>
+
+<span class="n">Now</span><span class="p">,</span><span class="w"> </span><span class="n">we</span><span class="w"> </span><span class="n">will</span><span class="w"> </span><span class="n">enter</span><span class="w"> </span><span class="n">an</span><span class="w"> </span><span class="n">echo</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="n">command</span><span class="w"> </span><span class="n">followed</span><span class="w"> </span><span class="k">by</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">few</span><span class="w"> </span><span class="n">other</span><span class="w"> </span><span class="n">lines</span>
+<span class="k">of</span><span class="w"> </span><span class="k">input</span><span class="p">.</span><span class="w"> </span><span class="k">Then</span><span class="w"> </span><span class="n">we</span><span class="w"> </span><span class="n">recall</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">echo</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="n">command</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="k">use</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">few</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="n">the</span>
+<span class="n">features</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="n">redo</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span><span class="w"> </span><span class="k">to</span><span class="w"> </span><span class="n">change</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="k">then</span><span class="w"> </span><span class="n">re</span><span class="o">-</span><span class="k">execute</span><span class="w"> </span><span class="n">the</span><span class="w"> </span><span class="n">command</span><span class="p">.</span>
+
+<span class="w">   </span><span class="o">&gt;</span><span class="n">echo</span><span class="w"> </span><span class="n">This</span><span class="w"> </span><span class="n">isss</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">Test</span>
+<span class="w">   </span><span class="n">This</span><span class="w"> </span><span class="n">isss</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">Test</span>
+<span class="w">   </span><span class="o">&gt;</span><span class="nc">date</span>
+<span class="w">   </span><span class="n">Sun</span><span class="w"> </span><span class="n">May</span><span class="w"> </span><span class="mi">31</span><span class="w"> </span><span class="mi">23</span><span class="err">:</span><span class="mi">54</span><span class="err">:</span><span class="mi">09</span><span class="w"> </span><span class="n">EDT</span><span class="w"> </span><span class="mi">2009</span>
+<span class="w">   </span><span class="o">&gt;</span><span class="n">pwd</span>
+<span class="w">   </span><span class="o">/</span><span class="n">cygdrive</span><span class="o">/</span><span class="n">c</span><span class="o">/</span><span class="n">urbanjs</span><span class="o">/</span><span class="n">MYCYGWIN</span><span class="o">/</span><span class="n">DISKA</span><span class="o">/</span><span class="n">public_html</span><span class="o">/</span><span class="k">public</span><span class="o">/</span><span class="n">CLONE</span><span class="o">/</span><span class="n">REDO</span>
+<span class="w">   </span><span class="o">&gt;</span><span class="n">r</span><span class="w">                            </span><span class="err">!</span><span class="w"> </span><span class="n">enter</span><span class="w"> </span><span class="n">edit</span><span class="w"> </span><span class="n">mode</span>
+<span class="w">   </span><span class="mi">00001</span><span class="w"> </span><span class="n">echo</span><span class="w"> </span><span class="n">This</span><span class="w"> </span><span class="n">isss</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">Test</span><span class="w">   </span><span class="err">!</span><span class="w"> </span><span class="k">last</span><span class="w"> </span><span class="n">commands</span><span class="w"> </span><span class="k">are</span><span class="w"> </span><span class="n">displayed</span>
+<span class="w">   </span><span class="mi">00002</span><span class="w"> </span><span class="nc">date</span>
+<span class="w">   </span><span class="mi">00003</span><span class="w"> </span><span class="n">pwd</span>
+<span class="w">   </span><span class="err">!</span><span class="n">pwd</span>
+<span class="w">   </span><span class="o">&gt;</span><span class="mi">1</span><span class="w">                            </span><span class="err">!</span><span class="w"> </span><span class="k">go</span><span class="w"> </span><span class="k">to</span><span class="w"> </span><span class="k">first</span><span class="w"> </span><span class="n">line</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="n">history</span>
+<span class="w">   </span><span class="err">!</span><span class="n">echo</span><span class="w"> </span><span class="n">This</span><span class="w"> </span><span class="n">isss</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">Test</span>
+<span class="w">                </span><span class="err">##</span><span class="w">   </span><span class="n">t</span><span class="w">           </span><span class="err">!</span><span class="w"> </span><span class="k">delete</span><span class="w"> </span><span class="ow">and</span><span class="w"> </span><span class="nf">replace</span><span class="w"> </span><span class="n">characters</span>
+<span class="w">   </span><span class="err">!</span><span class="n">echo</span><span class="w"> </span><span class="n">This</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">test</span><span class="w">          </span><span class="err">!</span><span class="w"> </span><span class="k">insert</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">string</span>
+<span class="w">                   </span><span class="o">^</span><span class="k">new</span><span class="w"> </span><span class="err">#</span>
+<span class="w">   </span><span class="err">!</span><span class="n">echo</span><span class="w"> </span><span class="n">This</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">test</span>
+<span class="w">   </span><span class="n">c</span><span class="o">/</span><span class="n">test</span><span class="o">/</span><span class="n">TEST</span><span class="o">/</span><span class="w">                  </span><span class="err">!</span><span class="w"> </span><span class="n">change</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="nf">substring</span>
+<span class="w">   </span><span class="err">!</span><span class="n">echo</span><span class="w"> </span><span class="n">This</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">TEST</span>
+<span class="w">                      </span><span class="o">&amp;</span><span class="w">          </span><span class="o">|</span><span class="w"> </span><span class="nf">replace</span><span class="w"> </span><span class="k">character</span><span class="w"> </span><span class="k">with</span><span class="w"> </span><span class="n">spaces</span>
+<span class="w">   </span><span class="err">!</span><span class="n">echo</span><span class="w"> </span><span class="n">This</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">newTEST</span>
+<span class="w">                                 </span><span class="err">!</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">blank</span><span class="w"> </span><span class="n">line</span><span class="w"> </span><span class="n">ends</span><span class="w"> </span><span class="n">editing</span>
+<span class="w">   </span><span class="n">This</span><span class="w"> </span><span class="k">is</span><span class="w"> </span><span class="n">a</span><span class="w"> </span><span class="n">newTEST</span>
+<span class="w">   </span><span class="o">&gt;</span><span class="n">quit</span>
+</code></pre></div>
+
+<h2 id="author">AUTHOR</h2>
+<div class="codehilite"><pre><span></span><code>John S. Urban, 1988,2009,2011,2015 (last change: Nov 2019)
+</code></pre></div>
+
+<h2 id="license">LICENSE</h2>
+<div class="codehilite"><pre><span></span><code>MIT
+</code></pre></div>
+<br>          <div class="card mb-4">
+      <h3 class="card-header card-title bg-light">Uses</h3>
+      <div class="card-body">
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item">
+              <ul class="list-inline">
+                  <li class="list-inline-item"><a href='http://fortranwiki.org/fortran/show/iso_fortran_env'>iso_fortran_env</a></li>
+              </ul>
+            </li>
+        </ul>
+      </div>
+    </div>
+
+      
+      <br>
+
+
+
+
+
+
+
+
+        <section>
+          <h2>Subroutines</h2>
+              <div class="card">
+    <div class="card-header codesum"><span class="anchor" id="proc-redo"></span> <h3>public  subroutine <a href='../proc/redo.html'>redo</a>(inputline, r, lun)  
+</h3></div>
+    <div class="card-body">
+          
+  
+
+  <h4>Arguments</h4>
+      <table class="table table-striped varlist">
+    <thead>
+      <tr>
+        <th scope="col">Type</th>
+<th scope="col">Intent</th><th scope="col">Optional</th>        <th scope="col">Attributes</th>
+        <th scope="col"></th>
+        <th scope="col">Name</th>
+        <th scope="col"></th>
+    </thead>
+    <tbody>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-inputline"></span>
+              character(len=*),
+            </td>
+<td>intent(inout)</td>
+              <td></td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>inputline</strong></td>
+            <td>
+
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-r"></span>
+              character(len=1),
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>r</strong></td>
+            <td>
+
+            </td>
+        </tr>
+        <tr>
+            <td>
+              <span class="anchor" id="variable-lun"></span>
+              integer,
+            </td>
+<td>intent(in),</td>
+              <td>optional</td>            <td>
+              
+            </td>
+            <td>::</td>
+            <td><strong>lun</strong></td>
+            <td>
+
+            </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+    </div>
+  </div>
+
+        </section>
+        <br>
+
+
+
+    </div>
+  </div>
+
+      <hr>
+    </div> <!-- /container -->
+    <footer>
+      <div class="container">
+        <div class="row justify-content-between">
+          <div class="col"><p>M_history was developed by John S. Urban<br>&copy; 2024 
+</p>
+          </div>
+          <div class="col">
+            <p class="text-end">
+              Documentation generated by
+              <a href="https://github.com/Fortran-FOSS-Programmers/ford">FORD</a>
+ on 2024-03-29 03:44              </p>
+          </div>
+        </div>
+        <br>
+      </div> <!-- /container -->
+    </footer>
+
+    <!-- Bootstrap core JavaScript -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>    
+
+    <!-- MathJax JavaScript
+             ================================================== -->
+             <!-- Placed at the end of the document so the pages load faster -->
+        <script type="text/x-mathjax-config">
+          MathJax.Hub.Config({
+          TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } },
+          jax: ['input/TeX','input/MathML','output/HTML-CSS'],
+          extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']
+          });
+        </script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+          <script src="../tipuesearch/tipuesearch_content.js"></script>
+          <script src="../tipuesearch/tipuesearch_set.js"></script>
+          <script src="../tipuesearch/tipuesearch.js"></script>
+
+  </body>
+</html>

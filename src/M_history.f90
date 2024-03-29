@@ -153,7 +153,7 @@
 !!          read(*,'(a)',iostat=ios) line       ! read new input line
 !!          ! if "r", edit and return a line from the history editor
 !!          call redo(line) ! store into history if not "r".
-!!          if(line.eq.'quit')stop ! exit program if user enters "quit"
+!!          if(line == 'quit')stop ! exit program if user enters "quit"
 !!          ! now call user code to process new line of data
 !!          ! As an example, call the system shell
 !!          call execute_command_line(trim(line),cmdstat=cstat,cmdmsg=sstat)
@@ -257,7 +257,7 @@ subroutine redo(inputline,r,lun)
 !       r
 !       r string
 
-! ident_1="@(#)M_history::redo(3f): open binary direct access file for keeping history"
+! ident_1="@(#) M_history redo(3f) open binary direct access file for keeping history"
 
 character(len=*),intent(inout) :: inputline                ! user string
 character(len=1),intent(in),optional :: r                  ! character to use to trigger editing
@@ -281,7 +281,7 @@ endif
       lcalled=.true.
       iredo=0   ! number of lines in redo buffer
       call open_history_(iobuf,' ','scratch',ioparc)        ! redo buffer
-      if(ioparc.ne.0)then
+      if(ioparc /= 0)then
          call journal('sc','error creating history file')
          return
       endif
@@ -289,15 +289,15 @@ endif
 !-----------------------------------------------------------------------------------------------------------------------------------
    ilast=len_trim(inputline)
 
-   if(ilast.eq.1.and.inputline(1:1).eq.r_local)then                             ! redo command
+   if(ilast == 1.and.inputline(1:1) == r_local)then                             ! redo command
       call redol_(inputline,iobuf,iredo,READLEN,' ',lun)
       ilast=len_trim(inputline)
-   elseif(inputline(1:min(2,len(inputline))).eq.r_local//' ')then               ! redo command with a string following
+   elseif(inputline(1:min(2,len(inputline))) == r_local//' ')then               ! redo command with a string following
       call redol_(inputline,iobuf,iredo,READLEN,inputline(3:max(3,ilast)),lun)
       ilast=len_trim(inputline)
    endif
 
-   if(ilast.ne.0)then                                                           ! put command into redo buffer
+   if(ilast /= 0)then                                                           ! put command into redo buffer
       iredo=iredo+1
       onerecord=inputline                ! make string the correct length; ASSUMING inputline IS NOT LONGER THAN onerecord
       write(iobuf,rec=iredo)onerecord
@@ -310,7 +310,7 @@ subroutine open_history_(iunit,fname,sname,ierr)
 implicit none
 !-----------------------------------------------------------------------------------------------------------------------------------
 
-! ident_2="@(#)M_history::open_history_(3fp): open history file for REDO(3f) procedure"
+! ident_2="@(#) M_history open_history_(3fp) open history file for REDO(3f) procedure"
 
 integer,intent(in)          :: iunit   ! Fortran unit to open
 character(len=*),intent(in) :: fname   ! filename to open
@@ -318,14 +318,14 @@ character(len=*),intent(in) :: sname   ! flag. If "scratch" ignore FNAME and ope
 integer,intent(out)         :: ierr    ! error code returned by opening file
 character(len=1024)         :: msg
 !-----------------------------------------------------------------------------------------------------------------------------------
-  if(sname.eq.'scratch')then
+  if(sname == 'scratch')then
      open(unit=iunit,status='scratch',form='unformatted',access='direct',recl=READLEN,iostat=ierr,iomsg=msg,action='readwrite')
   else
      open(unit=iunit,file=trim(fname),status=trim(sname),form='unformatted',access='direct', &
      & recl=READLEN,iostat=ierr,iomsg=msg,action='readwrite')
   endif
 !-----------------------------------------------------------------------------------------------------------------------------------
-  if(ierr.ne.0)then
+  if(ierr /= 0)then
      call journal('sc','*open_history_* open error ',ierr,'=',msg)
   endif
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -342,7 +342,7 @@ subroutine redol_(redoline,iobuf,iredo,ibuf0,init,lun)
 !  maybe make .NAME stick into variable $NAME in the calculator
 !  allow changing the edit characters in a modify
 
-! ident_3="@(#)M_history::redoline(3fp): redo a previous input line"
+! ident_3="@(#) M_history redoline(3fp) redo a previous input line"
 
 character(len=*),intent(out)   :: redoline    ! edited command line to be returned
 integer,intent(in)             :: iobuf       ! history file unit to read old commands from
@@ -403,10 +403,10 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
    icall=0                                               ! flag if have been thru loop or just got here
    cin=init                                              ! initialize the directive
    ibuf=min(ibuf0,len(redoline))
-   if(ibuf.le.0)return
+   if(ibuf <= 0)return
 !-----------------------------------------------------------------------------------------------------------------------------------
 1  continue
-   if(ipoint.le.0)then                                   ! if no lines in redo history file
+   if(ipoint <= 0)then                                   ! if no lines in redo history file
       redoline=' '                                       ! make command to 'redo' a blank line since no commands entered
    else
       read(iobuf,rec=ipoint,err=999)redoline(1:ibuf)     ! get last line in history file as line to redo
@@ -419,13 +419,13 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
    READLINE: do                                             ! display buffer and decide on command on first call or read command
       ilong=max(1,len_trim(redoline(1:ibuf)))               ! find length of command to redo
       write(*,'(a,a)')'!',redoline(:ilong)                  ! show old command
-      if(icall.ne.0)then                                    ! if not first call read the directive
+      if(icall /= 0)then                                    ! if not first call read the directive
          read(lun_local,'(a)',iostat=ios)cinbuf
-         if(ios.ne.0)then                                   ! if there was an I/O error reread line
+         if(ios /= 0)then                                   ! if there was an I/O error reread line
             exit READLINE
          endif
          call notabs(cinbuf,cin,ilast)
-      elseif(cin.eq.' ')then                                ! first call and no initial command passed in
+      elseif(cin == ' ')then                                ! first call and no initial command passed in
          cin='l -5'                                         ! on first call do this default command if init is blank
          ilast=4
       else                                                  ! if initial command was not blank do it instead of default
@@ -433,7 +433,7 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
       endif
       icall=icall+1
 !-----------------------------------------------------------------------------------------------------------------------------------
-      if(ilast.eq.0)then                                                 ! blank command line; return and execute
+      if(ilast == 0)then                                                 ! blank command line; return and execute
          return
       endif
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -455,7 +455,7 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
 !     INCLUDED IN STRING1 OR STRING2
 !-----------------------------------------------------------------------------------------------------------------------------------
        case('u','b')                                                     ! up or back through buffer
-         if(cin(2:).eq.' ')then
+         if(cin(2:) == ' ')then
             iup=1
          else
             iup=int(s2v(cin(2:),ierr,onerr=0))
@@ -464,7 +464,7 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
          goto 1
 !-----------------------------------------------------------------------------------------------------------------------------------
        case('d','f')                                                     ! down or forward through buffer
-         if(cin(2:).eq.' ')then
+         if(cin(2:) == ' ')then
             idown=1
          else
             idown=int(s2v(cin(2:),ierr,onerr=0))
@@ -477,7 +477,7 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
          if(allocated(ivals))then
             do i=1,size(ivals)
                ii=ivals(i)
-               if(ii.ge.1.and.ii.le.iredo)then
+               if(ii >= 1.and.ii <= iredo)then
                   read(iobuf,rec=ii,err=999)cinbuf(1:ibuf)               ! get last line in history file as line to redo
                   iend=len_trim(redoline)
                   redoline=redoline(:iend)//';'//trim(cinbuf)            !! should warn of truncation
@@ -500,13 +500,13 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
          endif
 !-----------------------------------------------------------------------------------------------------------------------------------
        case('l','p')                                                     ! display history buffer file with line numbers
-         if(cin(2:).eq.' ')then
+         if(cin(2:) == ' ')then
             istart=iredo+1-20                                            ! default is to back up 20 lines
          else
             istart=int(s2v(cin(2:),ierr,onerr=0))
             if(ddd)call journal('d','*redol* istart=',istart,'ierr=',ierr)
-            if(ierr.ne.0)istart=iredo
-            if(istart.lt.0)then
+            if(ierr /= 0)istart=iredo
+            if(istart < 0)then
                istart=iredo+1+istart
             endif
          endif
@@ -514,19 +514,19 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
          if(ddd)call journal('d','*redol* istart=',istart,'iredo=',iredo)
          do i10=istart,iredo
             read(iobuf,rec=i10,iostat=ios)redoline(1:ibuf)
-            if(ios.ne.0)then
+            if(ios /= 0)then
                exit READLINE
             endif
             ix=max(1,len_trim(redoline))
             write(*,'(i5.5,1x,a)',iostat=ios)i10,redoline(:ix)
-            if(ios.ne.0)then
+            if(ios /= 0)then
                exit READLINE
             endif
          enddo
 !-----------------------------------------------------------------------------------------------------------------------------------
        case('w')                                                         ! dump to a file
           cin=adjustl(cin(2:))                                           ! eliminate leading spaces and command name
-          if(cin.eq.' ')then
+          if(cin == ' ')then
              cin='DUMP'                                                  ! set as default and for message
           endif
           call do_w()
@@ -538,22 +538,22 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
           cmdline=trim(cmdline)//' '//cin                                ! append scratch filename to system command
           call do_w()                                                    ! dump history file
           call execute_command_line(cmdline,cmdstat=cstat,cmdmsg=msg)    ! Execute the command line specified by the string.
-          if(cstat.eq.0)then                                             ! rewrite or append to history file
-             if(cmd.eq.'e')iredo=0
+          if(cstat == 0)then                                             ! rewrite or append to history file
+             if(cmd == 'e')iredo=0
              call do_ar()
           endif
           open(newunit=iounit,file=cin,iostat=ios)                       ! remove scratch file
-          if(ios.ne.0)then
+          if(ios /= 0)then
             call journal('sc','*redol_* error opening scratch file file',cin,ios,'=',msg)
           endif
           close(unit=iounit,status='delete',iostat=ios,iomsg=msg)
-          if(ios.ne.0)then
+          if(ios /= 0)then
             call journal('sc','*redol_* error removing scratch file file',cin,ios,'=',msg)
           endif
 !-----------------------------------------------------------------------------------------------------------------------------------
        case('a')                                                         ! append to history from a file
           cin=adjustl(cin(2:))                                           ! eliminate leading spaces and command name
-          if(cin.eq.' ')then
+          if(cin == ' ')then
              cin='DUMP'                                                  ! set as default and for message
           endif
           call do_ar()
@@ -561,24 +561,24 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
        case('r')                                                         ! replace history from a file
           iredo=0
           cin=adjustl(cin(2:))                                           ! eliminate leading spaces and command name
-          if(cin.eq.' ')then
+          if(cin == ' ')then
              cin='DUMP'                                                  ! set as default and for message
           endif
           call do_ar()
 !-----------------------------------------------------------------------------------------------------------------------------------
        case('P','L')                                                     ! display history buffer file without line numbers
-         if(cin(2:).eq.' ')then                                          ! default is to go back up to 20
+         if(cin(2:) == ' ')then                                          ! default is to go back up to 20
             istart=iredo+1-20
          else
             istart=int(s2v(cin(2:),ierr,onerr=0))
-            if(istart.lt.0)then
+            if(istart < 0)then
                istart=iredo+1+istart
             endif
          endif
          istart=min(max(1,istart),iredo)                                 ! make istart a safe value
          do i30=istart,iredo                                             ! easier to cut and paste if no numbers
             read(iobuf,rec=i30,iostat=ios)redoline(1:ibuf)
-            if(ios.ne.0)then
+            if(ios /= 0)then
                goto 999
             endif
             ix=max(1,len_trim(redoline))
@@ -586,12 +586,12 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
          enddo
 !-----------------------------------------------------------------------------------------------------------------------------------
        case('/')                                                         ! display matches in buffer
-         if(ilast.lt.2)then
+         if(ilast < 2)then
             cycle
          endif
          do i20=1,iredo
             read(iobuf,rec=i20,err=999,iostat=ios)redoline(1:ibuf)
-            if(index(redoline(1:ibuf),cin(2:ilast)).ne.0)then
+            if(index(redoline(1:ibuf),cin(2:ilast)) /= 0)then
                ix=max(1,len_trim(redoline))
                write(*,'(i5.5,1x,a)',err=999)i20,redoline(:ix)
                ipoint=i20
@@ -600,7 +600,7 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
          goto 1
 !-----------------------------------------------------------------------------------------------------------------------------------
        case('!')                                                              ! external command
-         if(ilast.lt.2)then
+         if(ilast < 2)then
             cycle
          endif
          call execute_command_line(trim(cin(2:)),cmdstat=cstat,cmdmsg=msg)    ! Execute the command line specified by the string.
@@ -611,12 +611,12 @@ data numbers/'123456789012345678901234567890123456789012345678901234567890&
 !-----------------------------------------------------------------------------------------------------------------------------------
        case default                                                           ! assume anything else is a number
          val8=s2v(cin,ierr,onerr=0)
-         if(ierr.eq.0)then
+         if(ierr == 0)then
             iread=int(val8)
          else
             iread=0
          endif
-         if(iread.gt.0.and.iread.le.iredo)then
+         if(iread > 0.and.iread <= iredo)then
             read(iobuf,rec=iread,err=999,iostat=ios)redoline(1:ibuf)
             ipoint=iread
          endif
@@ -633,19 +633,19 @@ contains
 subroutine do_w()
 WRITE: block
    open(newunit=idump,file=cin,iostat=ios,status='UNKNOWN',iomsg=msg)
-   if(ios.ne.0)then
+   if(ios /= 0)then
       call journal('sc','*redol_* error opening dump file',ios,'=',msg)
       exit WRITE
    endif
    do i15=1,iredo
       read(iobuf,rec=i15,iostat=ios,iomsg=msg)redoline(1:ibuf)
-      if(ios.ne.0)then
+      if(ios /= 0)then
          call journal('sc','*redol_* error reading history file',ios,'=',msg)
          exit WRITE
       endif
       ix=max(1,len_trim(redoline))
       write(idump,'(a)',iostat=ios,iomsg=msg)redoline(:ix)
-      if(ios.ne.0)then
+      if(ios /= 0)then
          call journal('sc','*redol_* error writing dump file',ios,'=',msg)
          close(idump,iostat=ios)
          exit WRITE
@@ -659,13 +659,13 @@ end subroutine do_w
 subroutine do_ar()
 REPLACE: block
    open(newunit=idump,file=cin,iostat=ios,status='OLD',iomsg=msg)
-   if(ios.ne.0)then
+   if(ios /= 0)then
       call journal('sc','*redol_* error opening file',ios,'=',msg)
       exit REPLACE
    endif
    do
       read(idump,'(a)',iostat=ios,iomsg=msg)redoline(1:ibuf)
-      if(ios.ne.0)then
+      if(ios /= 0)then
          if(.not.is_iostat_end(ios))then
             call journal('sc','*redol_* error reading file ',cin,ios,'=',msg)
          endif
@@ -673,7 +673,7 @@ REPLACE: block
       endif
       iredo=iredo+1
       write(iobuf,rec=iredo,iostat=ios,iomsg=msg)redoline(1:ibuf)
-      if(ios.ne.0)then
+      if(ios /= 0)then
          call journal('sc','*redol_* error writing history file',ios,'=',msg)
          exit REPLACE
       endif
@@ -689,7 +689,7 @@ end subroutine redol_
 !===================================================================================================================================
 subroutine help_()
 
-! ident_4="@(#)M_history::help_(3fp): prints help for REDO(3f)"
+! ident_4="@(#) M_history help_(3fp) prints help for REDO(3f)"
 
 character(len=80),allocatable :: usage(:)
 integer                       :: i
@@ -762,7 +762,7 @@ integer                       :: inotnull
 integer                       :: ireturn
 integer                       :: imax
    if (present(delimiters)) then
-      if(delimiters.ne.'')then
+      if(delimiters /= '')then
          dlim=delimiters
       else
          dlim=' '//char(9)//char(10)//char(11)//char(12)//char(13)//char(0)
@@ -784,15 +784,15 @@ integer                       :: imax
    icount=0
    inotnull=0
    imax=0
-   if(lgth.gt.0)then
+   if(lgth > 0)then
       icol=1
       infinite: do i30=1,lgth,1
          ibegin(i30)=icol
-         if(index(dlim(1:idlim),input_line(icol:icol)).eq.0)then
+         if(index(dlim(1:idlim),input_line(icol:icol)) == 0)then
             iterm(i30)=lgth
             do i10=1,idlim
                ifound=index(input_line(ibegin(i30):lgth),dlim(i10:i10))
-               if(ifound.gt.0)then
+               if(ifound > 0)then
                   iterm(i30)=min(iterm(i30),ifound+ibegin(i30)-2)
                endif
             enddo
@@ -804,7 +804,7 @@ integer                       :: imax
          endif
          imax=max(imax,iterm(i30)-ibegin(i30)+1)
          icount=i30
-         if(icol.gt.lgth)then
+         if(icol > lgth)then
             exit infinite
          endif
       enddo infinite
@@ -821,7 +821,7 @@ integer                       :: imax
    case default             ; ii=1       ; iiii=1
    end select
    do i20=1,icount
-      if(iterm(i20).lt.ibegin(i20))then
+      if(iterm(i20) < ibegin(i20))then
          select case (trim(adjustl(nlls)))
          case ('ignore','','ignoreend')
          case default
@@ -872,7 +872,7 @@ integer                        :: ichr
    id=mr-ml
    len_old=len(old)
    len_new=len(new)
-   if(id.le.0)then
+   if(id <= 0)then
       il=1
       ir=maxlengthout
       dum1(:)=' '
@@ -881,15 +881,15 @@ integer                        :: ichr
       ir=min0(mr,maxlengthout)
       dum1=targetline(:il-1)
    endif
-   if(len_old.eq.0)then
+   if(len_old == 0)then
       ichr=len_new + original_input_length
-      if(ichr.gt.maxlengthout)then
+      if(ichr > maxlengthout)then
          call journal('sc','*substitute* new line will be too long')
          ier1=-1
          if (present(ierr))ierr=ier1
          return
       endif
-      if(len_new.gt.0)then
+      if(len_new > 0)then
          dum1(il:)=new(:len_new)//targetline(il:original_input_length)
       else
          dum1(il:)=targetline(il:original_input_length)
@@ -903,24 +903,24 @@ integer                        :: ichr
    ic=il
    loop: do
       ind=index(targetline(ic:),old(:len_old))+ic-1
-      if(ind.eq.ic-1.or.ind.gt.ir)then
+      if(ind == ic-1.or.ind > ir)then
          exit loop
       endif
       ier1=ier1+1
-      if(ind.gt.ic)then
+      if(ind > ic)then
          ladd=ind-ic
-         if(ichr-1+ladd.gt.maxlengthout)then
+         if(ichr-1+ladd > maxlengthout)then
             ier1=-1
             exit loop
          endif
          dum1(ichr:)=targetline(ic:ind-1)
          ichr=ichr+ladd
       endif
-      if(ichr-1+len_new.gt.maxlengthout)then
+      if(ichr-1+len_new > maxlengthout)then
          ier1=-2
          exit loop
       endif
-      if(len_new.ne.0)then
+      if(len_new /= 0)then
          dum1(ichr:)=new(:len_new)
          ichr=ichr+len_new
       endif
@@ -932,13 +932,13 @@ integer                        :: ichr
    case (0)
    case default
       ladd=original_input_length-ic
-      if(ichr+ladd.gt.maxlengthout)then
+      if(ichr+ladd > maxlengthout)then
          call journal('sc','*substitute* new line will be too long')
          ier1=-1
          if(present(ierr))ierr=ier1
          return
       endif
-      if(ic.lt.len(targetline))then
+      if(ic < len(targetline))then
          dum1(ichr:)=targetline(ic:max(ic,original_input_length))
       endif
       targetline=dum1(:maxlengthout)
@@ -958,7 +958,7 @@ logical                          :: ifok
 integer                          :: lmax
 integer                          :: start_token,end_token
    lmax=len_trim(cmd)
-   if(lmax.ge.4)then
+   if(lmax >= 4)then
       delimiters=cmd(id:id)
       itoken=0
 
@@ -968,12 +968,12 @@ integer                          :: start_token,end_token
          old=''
       endif
 
-      if(cmd(id:id).eq.cmd(id+1:id+1))then
+      if(cmd(id:id) == cmd(id+1:id+1))then
          new=old
          old=''
       else
          ifok=strtok(cmd(id:),itoken,start_token,end_token,delimiters)
-         if(end_token .eq. (len(cmd)-id+1) )end_token=len_trim(cmd(id:))
+         if(end_token  ==  (len(cmd)-id+1) )end_token=len_trim(cmd(id:))
          new=cmd(start_token+id-1:min(end_token+id-1,lmax))
       endif
 
@@ -992,32 +992,32 @@ logical                      :: strtok_status
 integer,intent(out)          :: token_start
 integer,intent(inout)        :: token_end
 integer,save                 :: isource_len
-   if(itoken.le.0)then
+   if(itoken <= 0)then
       token_start=1
    else
       token_start=token_end+1
    endif
    isource_len=len(source_string)
-   if(token_start.gt.isource_len)then
+   if(token_start > isource_len)then
       token_end=isource_len
       strtok_status=.false.
       return
    endif
-   do while (token_start .le. isource_len)
-      if(index(delimiters,source_string(token_start:token_start)) .ne. 0) then
+   do while (token_start  <=  isource_len)
+      if(index(delimiters,source_string(token_start:token_start))  /=  0) then
          token_start = token_start + 1
       else
          exit
       endif
    enddo
    token_end=token_start
-   do while (token_end .le. isource_len-1)
-      if(index(delimiters,source_string(token_end+1:token_end+1)) .ne. 0) then
+   do while (token_end  <=  isource_len-1)
+      if(index(delimiters,source_string(token_end+1:token_end+1))  /=  0) then
          exit
       endif
       token_end = token_end + 1
    enddo
-   if (token_start .gt. isource_len) then
+   if (token_start  >  isource_len) then
       strtok_status=.false.
    else
       itoken=itoken+1
@@ -1046,18 +1046,18 @@ maxscra=len(cline)
    ichr=0
 11 continue
    i=i+1
-   if(ichr.gt.lmx1)goto 999
+   if(ichr > lmx1)goto 999
    if(linsrt) then
-      if(i.gt.iend) cmod(i:i)=c(1:1)
-      if(cmod(i:i).eq.c(1:1))then
+      if(i > iend) cmod(i:i)=c(1:1)
+      if(cmod(i:i) == c(1:1))then
          linsrt=.false.
-         if(ic+1.eq.i)then
+         if(ic+1 == i)then
             ichr=ichr+1
             dum2(ichr:ichr)=c(1:1)
          endif
          do j=ic,i
             ichr=ichr+1
-            if(ichr.gt.lmax)goto 999
+            if(ichr > lmax)goto 999
             dum2(ichr:ichr)=cline(j:j)
          enddo
          ic=i
@@ -1067,24 +1067,24 @@ maxscra=len(cline)
       dum2(ichr:ichr)=cmod(i:i)
    else
       ic=ic+1
-      if(cmod(i:i).eq.c(1:1))goto 1
-      if(cmod(i:i).eq.c(3:3))then
+      if(cmod(i:i) == c(1:1))goto 1
+      if(cmod(i:i) == c(3:3))then
          linsrt=.true.
          goto 1
       endif
       ichr=ichr+1
-      if(cmod(i:i).eq.c(2:2))then
+      if(cmod(i:i) == c(2:2))then
          dum2(ichr:ichr)=' '
          goto 1
       endif
-      if(cmod(i:i).eq.' ')then
+      if(cmod(i:i) == ' ')then
          dum2(ichr:ichr)=cline(ic:ic)
       else
          dum2(ichr:ichr)=cmod(i:i)
       endif
    endif
 1  continue
-   if(i.lt.lmax)goto 11
+   if(i < lmax)goto 11
 999   continue
    cline=dum2
 end subroutine modif
@@ -1193,8 +1193,8 @@ integer,intent(out)         :: ierr
 doubleprecision             :: valu8
    valu8=0.0d0
    call a2d(chars,valu8,ierr,onerr=0.0d0)
-   if(valu8.le.huge(valu))then
-      if(valu8.le.huge(valu))then
+   if(valu8 <= huge(valu))then
+      if(valu8 <= huge(valu))then
          valu=int(valu8)
       else
          call journal('sc','*a2i*','- value too large',valu8,'>',huge(valu))
@@ -1220,10 +1220,10 @@ character(len=3),save        :: nan_string='NaN'
    ierr=0
    local_chars=unquote(chars)
    msg=''
-   if(len(local_chars).eq.0)local_chars=' '
+   if(len(local_chars) == 0)local_chars=' '
    call substitute(local_chars,',','')
    pnd=scan(local_chars,'#:')
-   if(pnd.ne.0)then
+   if(pnd /= 0)then
       write(frmt,fmt)pnd-1
       read(local_chars(:pnd-1),fmt=frmt,iostat=ierr,iomsg=msg)basevalue
       if(decodebase(local_chars(pnd+1:),basevalue,ivalu))then
@@ -1251,7 +1251,7 @@ character(len=3),save        :: nan_string='NaN'
          read(local_chars,fmt=frmt,iostat=ierr,iomsg=msg)valu
       end select
    endif
-   if(ierr.ne.0)then
+   if(ierr /= 0)then
       if(present(onerr))then
          select type(onerr)
          type is (integer)
@@ -1264,9 +1264,9 @@ character(len=3),save        :: nan_string='NaN'
       else
          read(nan_string,'(g3.3)')valu
       endif
-      if(local_chars.ne.'eod')then
+      if(local_chars /= 'eod')then
          call journal('sc','*a2d* - cannot produce number from string ['//trim(chars)//']')
-         if(msg.ne.'')then
+         if(msg /= '')then
             call journal('sc','*a2d* - ['//trim(msg)//']')
          endif
       endif
@@ -1289,7 +1289,7 @@ class(*),intent(in),optional :: onerr
    if(present(ierr))then
       ierr=ierr_local
       s2v=valu
-   elseif(ierr_local.ne.0)then
+   elseif(ierr_local /= 0)then
       write(*,*)'*s2v* stopped while reading '//trim(chars)
       stop 1
    else
@@ -1354,26 +1354,26 @@ character(len=1024)                      :: msg
       select type(gval)
       type is (integer)
          fmt_local='(i0)'
-         if(fmt.ne.'') fmt_local=fmt
+         if(fmt /= '') fmt_local=fmt
          write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
       type is (real)
          fmt_local='(bz,g23.10e3)'
          fmt_local='(bz,g0.8)'
-         if(fmt.ne.'') fmt_local=fmt
+         if(fmt /= '') fmt_local=fmt
          write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
       type is (doubleprecision)
          fmt_local='(bz,g0)'
-         if(fmt.ne.'') fmt_local=fmt
+         if(fmt /= '') fmt_local=fmt
          write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
       type is (logical)
          fmt_local='(l1)'
-         if(fmt.ne.'') fmt_local=fmt
+         if(fmt /= '') fmt_local=fmt
          write(chars,fmt_local,iostat=err_local,iomsg=msg)gval
       class default
          call journal('*value_to_string* UNKNOWN TYPE')
          chars=' '
       end select
-      if(fmt.eq.'') then
+      if(fmt == '') then
          chars=adjustl(chars)
          call trimzeros_(chars)
       endif
@@ -1392,7 +1392,7 @@ character(len=1024)                      :: msg
          chars=''
       end select
       chars=adjustl(chars)
-      if(index(chars,'.').ne.0) call trimzeros_(chars)
+      if(index(chars,'.') /= 0) call trimzeros_(chars)
    endif
    if(present(trimz))then
       if(trimz)then
@@ -1407,7 +1407,7 @@ character(len=1024)                      :: msg
 
    if(present(err)) then
       err=err_local
-   elseif(err_local.ne.0)then
+   elseif(err_local /= 0)then
       chars=chars//' *value_to_string* WARNING:['//trim(msg)//']'
    endif
 
@@ -1438,7 +1438,7 @@ integer                      :: i, ii
       expo=str(ipos:)
       str=str(1:ipos-1)
    endif
-   if(index(str,'.').eq.0)then
+   if(index(str,'.') == 0)then
       ii=len_trim(str)
       str(ii+1:ii+1)='.'
    endif
@@ -1447,7 +1447,7 @@ integer                      :: i, ii
       case('0')
          cycle
       case('.')
-         if(i.le.1)then
+         if(i <= 1)then
             str='0'
          else
             str=str(1:i-1)
@@ -1485,8 +1485,8 @@ logical                              :: inside
    endif
    inlen=len(quoted_str)
    allocate(character(len=inlen) :: unquoted_str)
-   if(inlen.ge.1)then
-      if(quoted_str(1:1).eq.single_quote)then
+   if(inlen >= 1)then
+      if(quoted_str(1:1) == single_quote)then
          quote=iachar(single_quote)
       else
          quote=iachar(double_quote)
@@ -1500,17 +1500,17 @@ logical                              :: inside
    inside=.false.
    stepthrough: do i=1,inlen
       current=iachar(quoted_str(i:i))
-      if(before.eq.iesc)then
+      if(before == iesc)then
            iput=iput-1
            unquoted_str(iput:iput)=char(current)
            iput=iput+1
            before=-2
-      elseif(current.eq.quote)then
-         if(before.eq.quote)then
+      elseif(current == quote)then
+         if(before == quote)then
            unquoted_str(iput:iput)=char(quote)
            iput=iput+1
            before=-2
-         elseif(.not.inside.and.before.ne.iesc)then
+         elseif(.not.inside.and.before /= iesc)then
             inside=.true.
          else
             before=current
@@ -1588,10 +1588,10 @@ integer           :: ierr
   decodebase=.false.
 
   ipound=index(string_local,'#')
-  if(basein.eq.0.and.ipound.gt.1)then
+  if(basein == 0.and.ipound > 1)then
      call string_to_value(string_local(:ipound-1),basein_local,ierr)
      string_local=string_local(ipound+1:)
-     if(basein_local.ge.0)then
+     if(basein_local >= 0)then
         out_sign=1
      else
         out_sign=-1
@@ -1612,7 +1612,7 @@ integer           :: ierr
      do i=1, long
         k=long+1-i
         ch=string_local(k:k)
-        if(ch.eq.'-'.and.k.eq.1)then
+        if(ch == '-'.and.k == 1)then
            out_sign=-1
            cycle
         endif
@@ -1667,10 +1667,10 @@ integer                      :: in_sign
      enddo
      codebase=.true.
   endif
-  if(in_sign.eq.-1)then
+  if(in_sign == -1)then
      answer='-'//trim(answer)
   endif
-  if(answer.eq.'')then
+  if(answer == '')then
      answer='0'
   endif
 end function codebase
@@ -1736,23 +1736,23 @@ integer                           :: i
       do while ( strtok(source_string,itoken,istart,iend,delimiters) )
          iword=iend-istart+1
          iword_max=max(iword_max,iword)
-         if(iword.gt.length)then
-            if(ilength.ne.0)then
+         if(iword > length)then
+            if(ilength /= 0)then
                ilines=ilines+1
             endif
-            if(i.eq.2)then
+            if(i == 2)then
                fmt(ilines)=source_string(istart:iend)//' '
             endif
             ilength=iword+1
-         elseif(ilength+iword.le.length)then
-            if(i.eq.2)then
+         elseif(ilength+iword <= length)then
+            if(i == 2)then
                fmt(ilines)=fmt(ilines)(:ilength)//source_string(istart:iend)
             endif
             ilength=ilength+iword+1
          else
             ilines=ilines+1
             ilength=0
-            if(i.eq.2)then
+            if(i == 2)then
                fmt(ilines)=fmt(ilines)(:ilength)//source_string(istart:iend)
             endif
             ilength=iword+1
@@ -1904,53 +1904,53 @@ character(len=4096)                :: mssge
       case('>'); debug=.true.
       case('<'); debug=.false.
       case('%')
-         if(msg.eq.'')then
+         if(msg == '')then
             prefix_it=.false.
          else
             prefix_template=msg
             prefix_it=.true.
          endif
       case('N')
-         if(msg.ne.' '.and.msg.ne.'#N#'.and.msg.ne.'"#N#"')then
+         if(msg /= ' '.and.msg /= '#N#'.and.msg /= '"#N#"')then
             close(unit=last_int,iostat=ios)
             open(unit=last_int,file=adjustl(trim(msg)),iostat=ios)
-            if(ios.eq.0)then
+            if(ios == 0)then
                stdout=last_int
             else
                write(*,*)'*journal* error opening redirected output file, ioerr=',ios
                write(*,*)'*journal* msg='//trim(msg)
             endif
-         elseif(msg.eq.' ')then
+         elseif(msg == ' ')then
             close(unit=last_int,iostat=ios)
             stdout=6
          endif
       case('C','c')
          if(trailopen)then
             write(itrail,'(3a)',advance=adv)prefix,comment,trim(msg)
-         elseif(times.eq.0)then
+         elseif(times == 0)then
          endif
       case('D','d')
          if(debug)then
             if(trailopen)then
                write(itrail,'(4a)',advance=adv)prefix,comment,'DEBUG: ',trim(msg)
-            elseif(times.eq.0)then
+            elseif(times == 0)then
                write(stdout,'(3a)',advance=adv)prefix,'DEBUG:',trim(msg)
                times=times+1
             endif
          endif
       case('F','f')
          flush(unit=itrail,iostat=ios,iomsg=mssge)
-         if(ios.ne.0)then
+         if(ios /= 0)then
             write(*,'(a)') trim(mssge)
          endif
       case('A','a')
-         if(msg.ne.'')then
+         if(msg /= '')then
             open(newunit=itrail,status='unknown',access='sequential',file=adjustl(trim(msg)),&
             & form='formatted',iostat=ios,position='append')
             trailopen=.true.
          endif
       case('O','o')
-         if(msg.ne.'')then
+         if(msg /= '')then
             open(newunit=itrail,status='unknown',access='sequential', file=adjustl(trim(msg)),form='formatted',iostat=ios)
             trailopen=.true.
          else

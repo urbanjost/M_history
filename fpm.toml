@@ -18,4 +18,5 @@ name="test_suite_M_history"
 source-dir="test"
 main="test_suite_M_history.f90"
 [test.dependencies]
-M_framework = {namespace = "GPF"}
+M_framework = { git = "https://github.com/urbanjost/M_framework.git" }
+#M_framework = {namespace = "GPF"}
